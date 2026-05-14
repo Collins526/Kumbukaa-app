@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kumbuka | Admin Dashboard</title>
+    <link rel="stylesheet" href="/kumbukaa/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <h1 id="load-marker" style="color: red; position: fixed; top: 0; left: 0; background: white; z-index: 10000; padding: 10px;">HTML LOADED</h1>
+    <div class="container">
+        <!-- Auth Section -->
+        <div id="auth-section" class="auth-card">
+            <h1 style="text-align: center; margin-bottom: 2rem;">Kumbuka</h1>
+            <div id="login-form">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="username" placeholder="user@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" placeholder="••••••••">
+                </div>
+                <button onclick="app.login()">Sign In</button>
+                <p id="auth-error" style="color: #ef4444; font-size: 0.875rem; margin-top: 1rem; text-align: center; display: none;"></p>
+            </div>
+        </div>
+
+        <!-- Dashboard Section -->
+        <div id="dashboard" class="hidden">
+            <header>
+                <h1>Kumbuka Dashboard</h1>
+                <div style="display: flex; align-items: center; gap: 1.5rem;">
+                    <span id="user-display" style="font-weight: 600;"></span>
+                    <button class="logout-btn" onclick="app.logout()">Logout</button>
+                </div>
+            </header>
+
+            <div class="grid">
+                <!-- Stats Cards -->
+                <div class="card">
+                    <h3>Total Loans</h3>
+                    <div id="stat-loans" class="stat">0</div>
+                    <div class="label-muted">Active and Pending</div>
+                </div>
+                <div class="card">
+                    <h3>Capital Disbursed</h3>
+                    <div id="stat-capital" class="stat">KES 0</div>
+                    <div class="label-muted">Across all lenders</div>
+                </div>
+                <div class="card">
+                    <h3>Total Transactions</h3>
+                    <div id="stat-transactions" class="stat">0</div>
+                    <div class="label-muted">Approved payments</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem;" class="grid">
+                <!-- Active Loans Table -->
+                <div class="card" style="grid-column: span 2;">
+                    <h3>Recent Loans</h3>
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Loan ID</th>
+                                    <th>Borrower</th>
+                                    <th>Amount</th>
+                                    <th>Balance</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="loans-table">
+                                <!-- Data injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Recent Transactions -->
+                <div class="card">
+                    <h3>Recent Transactions</h3>
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactions-table">
+                                <!-- Data injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="error-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; background:rgba(239, 68, 68, 0.9); color:white; padding:1rem; text-align:center; z-index:9999;">
+        <strong>Frontend Error:</strong> <span id="error-msg"></span>
+        <button onclick="location.reload()" style="margin-left:1rem; width:auto; padding:0.25rem 0.5rem; background:white; color:#ef4444;">Reload</button>
+    </div>
+
+    <script>
+        window.addEventListener('error', function(e) {
+            console.error('Global Error:', e);
+            document.getElementById('error-overlay').style.display = 'block';
+            document.getElementById('error-msg').textContent = e.message;
+        });
+    </script>
+    <script src="/kumbukaa/js/app.js"></script>
+</body>
+</html>
