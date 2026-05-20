@@ -14,9 +14,9 @@ COPY pom.xml .
 COPY src ./src
 
 # Build the application
+# Ensure the Maven wrapper is executable in the Linux container
 # Using -DskipTests to skip tests during build for faster deployment
-# Using -DoutputDirectory=target to ensure JAR is in expected location
-RUN ./mvnw clean package -DskipTests -q
+RUN chmod +x ./mvnw && ./mvnw clean package -DskipTests -q
 
 # Runtime stage: Eclipse Temurin JRE 21-alpine (minimal runtime image)
 FROM eclipse-temurin:21-jre-alpine
