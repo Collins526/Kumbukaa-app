@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 @Service
 public class AuthService {
@@ -49,13 +50,22 @@ public class AuthService {
     @Value("${spring.mail.username}")
     private String mailFrom;
 
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final SecureRandom secureRandom = new SecureRandom();
     private final Map<String, OtpDetails> otpStore = new ConcurrentHashMap<>();
 
+    private boolean isValidEmail(String email) {
+        return email != null && EMAIL_PATTERN.matcher(email.trim()).matches();
+    }
+
     public String register(RegisterRequest request) throws Exception {
-        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+        String email = request.getEmail() == null ? null : request.getEmail().trim();
+        if (email == null || email.isEmpty()) {
             throw new Exception("Email is required");
+        }
+        if (!isValidEmail(email)) {
+            throw new Exception("Invalid email");
         }
         if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
             throw new Exception("Password is required");
@@ -64,13 +74,13 @@ public class AuthService {
             throw new Exception("Passwords do not match");
         }
 
-        if (authRepository.findByEmail(request.getEmail()).isPresent()) {
+        if (authRepository.findByEmail(email).isPresent()) {
             throw new Exception("Email already exists");
         }
 
         User newUser = new User();
         newUser.setName(request.getName());
-        newUser.setEmail(request.getEmail());
+        newUser.setEmail(email);
         newUser.setPhoneNumber(request.getPhoneNumber());
         newUser.setPassword(passwordEncoder.encode(request.getPassword()));
         newUser.setRole(Role.valueOf(request.getRole().trim().toUpperCase()));
@@ -79,8 +89,8 @@ public class AuthService {
         Auth auth = new Auth();
         auth.setUser(savedUser);
         auth.setPassword(passwordEncoder.encode(request.getPassword()));
-        auth.setEmail(request.getEmail());
-        auth.setUsername(request.getEmail()); // Set username to email
+        auth.setEmail(email);
+        auth.setUsername(email); // Set username to email
         auth.setIsVerified(true);
         auth.setIsActive(true);
 
@@ -138,13 +148,17 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) throws Exception {
-        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+        String email = request.getEmail() == null ? null : request.getEmail().trim();
+        if (email == null || email.isEmpty()) {
             throw new Exception("Email is required");
         }
+        if (!isValidEmail(email)) {
+            throw new Exception("Invalid email");
+        }
 
-        Optional<Auth> authOptional = authRepository.findByEmail(request.getEmail().trim());
+        Optional<Auth> authOptional = authRepository.findByEmail(email);
         if (authOptional.isEmpty()) {
-            throw new Exception("Invalid email or credentials");
+            throw new Exception("Email does not exist");
         }
 
         Auth auth = authOptional.get();
@@ -163,7 +177,7 @@ public class AuthService {
         }
 
         if (!authenticated) {
-            throw new Exception("Invalid email or credentials");
+            throw new Exception("Invalid credentials");
         }
 
         String token = jwtTokenProvider.generateToken(auth.getEmail(), auth.getUser().getId());
@@ -187,13 +201,17 @@ public class AuthService {
     }
 
     public String requestOtp(String email) throws Exception {
-        if (email == null || email.trim().isEmpty()) {
+        String normalizedEmail = email == null ? null : email.trim();
+        if (normalizedEmail == null || normalizedEmail.isEmpty()) {
             throw new Exception("Email is required");
         }
+        if (!isValidEmail(normalizedEmail)) {
+            throw new Exception("Invalid email");
+        }
 
-        Optional<Auth> authOptional = authRepository.findByEmail(email.trim());
+        Optional<Auth> authOptional = authRepository.findByEmail(normalizedEmail);
         if (authOptional.isEmpty()) {
-            throw new Exception("Email not found");
+            throw new Exception("Email does not exist");
         }
 
         String otp = String.format("%06d", secureRandom.nextInt(1_000_000));

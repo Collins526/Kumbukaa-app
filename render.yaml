@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: kumbuka
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        description: PostgreSQL connection string (e.g., jdbc:postgresql://host:port/database?sslmode=require)
+      - key: SPRING_DATASOURCE_USERNAME
+        description: Database username
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        description: Database password
+        sync: false
+      - key: JWT_SECRET
+        description: JWT secret key for authentication
+        sync: false
+      - key: SPRING_MAIL_USERNAME
+        description: Email username for notifications
+        sync: false
+      - key: SPRING_MAIL_PASSWORD
+        description: Email password for notifications
+        sync: false
+      - key: SERVER_PORT
+        value: "8080"
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+    buildCommand: ""
+    startCommand: ""
+    healthCheckPath: /kumbukaa/health
+    buildFilter:
+      paths:
+        - source: /
+          destination: /
+    autoDeploy: true
