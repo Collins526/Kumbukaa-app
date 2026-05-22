@@ -1,0 +1,15 @@
+$kind: http-request
+url: https://kumbukaa-app.onrender.com/kumbukaa/api/auth/login
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"email\": \"ckemboi999@gmail.com\",\r
+
+    \  \"password\": \"Password@123\"\r
+
+    \r
+
+    }"
+order: 1792543633599430

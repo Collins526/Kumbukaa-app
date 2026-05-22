@@ -1,0 +1,7 @@
+# Use this workspace to collaborate
+workspace:
+  id: be5d8665-3496-4e2d-82ff-0849faec36bb
+
+localResources:
+  collections:
+    - ..\Kumbukaa-Postman-Collection.json

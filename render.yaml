@@ -5,21 +5,40 @@ services:
     dockerfilePath: ./Dockerfile
     envVars:
       - key: SPRING_DATASOURCE_URL
-        description: PostgreSQL connection string (e.g., jdbc:postgresql://host:port/database?sslmode=require)
+        description: jdbc:postgresql://ep-frosty-tree-am7wpkc4-pooler.c-5.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+        sync: false
       - key: SPRING_DATASOURCE_USERNAME
-        description: Database username
+        description: neondb_owner
         sync: false
       - key: SPRING_DATASOURCE_PASSWORD
-        description: Database password
+        description: npg_UfAiLj9crbe1
         sync: false
       - key: JWT_SECRET
-        description: JWT secret key for authentication
+        description: kumbukaa-lending-app-secret-key-spring-boot-security-jwt-authentication-super-secure-key
+        sync: false
+      - key: SPRING_MAIL_HOST
+        value: smtp.gmail.com
+        description: SMTP host for email delivery
+        sync: false
+      - key: SPRING_MAIL_PORT
+        value: "587"
+        description: SMTP port for email delivery
         sync: false
       - key: SPRING_MAIL_USERNAME
+        value: collinskibet526@gmail.com
         description: Email username for notifications
         sync: false
       - key: SPRING_MAIL_PASSWORD
-        description: Email password for notifications
+        value: qclbqoeoiblbphnw
+        description: Email password or app password for notifications
+        sync: false
+      - key: SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH
+        value: "true"
+        description: SMTP auth enabled
+        sync: false
+      - key: SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE
+        value: "true"
+        description: SMTP STARTTLS enabled
         sync: false
       - key: SERVER_PORT
         value: "8080"
