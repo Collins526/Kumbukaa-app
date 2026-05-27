@@ -1,0 +1,20 @@
+name: Kumbukaa Local
+values:
+  - key: baseUrl
+    value: 'http://localhost:8080/kumbukaa'
+  - key: token
+    value: ''
+  - key: refreshToken
+    value: ''
+  - key: authId
+    value: ''
+  - key: userId
+    value: ''
+  - key: borrowerId
+    value: ''
+  - key: lenderId
+    value: ''
+  - key: loanId
+    value: ''
+  - key: transactionId
+    value: ''

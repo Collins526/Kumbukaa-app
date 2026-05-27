@@ -95,7 +95,7 @@ public class AuthService {
 
         authRepository.save(auth);
 
-        return "User registered successfully. Choose to lend or borrow after login.";
+        return "user registered succefully";
     }
 
     private void ensureBorrowerRecord(User savedUser) {
