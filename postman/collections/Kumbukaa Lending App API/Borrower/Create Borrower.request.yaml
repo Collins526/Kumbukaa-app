@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{baseUrl}}/api/borrower/create"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+body:
+  type: text
+  content: |-
+    {
+      "userId": {{userId}},
+      "creditScore": 650,
+      "idNumber": "1234567890",
+      "employmentStatus": "EMPLOYED",
+      "annualIncome": 25000.0,
+      "dateOfBirth": "1992-05-10",
+      "address": "456 Market St",
+      "city": "Nairobi",
+      "postalCode": "00100",
+      "isVerified": false,
+      "totalBorrowed": 0.0,
+      "totalRepaid": 0.0
+    }
+order: 1000

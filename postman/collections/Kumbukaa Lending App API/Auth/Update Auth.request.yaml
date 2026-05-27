@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/{{authId}}"
+method: PUT
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+body:
+  type: text
+  content: |-
+    {
+      "id": {{authId}},
+      "email": "john@example.com",
+      "username": "john@example.com",
+      "isVerified": true,
+      "isActive": true
+    }
+order: 10000

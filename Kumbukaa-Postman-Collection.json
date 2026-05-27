@@ -2,12 +2,12 @@
   "info": {
     "name": "Kumbukaa Lending App API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Postman collection for the Kumbukaa backend API. Set {{baseUrl}} to http://localhost:8080/kumbukaa."
+    "description": "Postman collection for the Kumbukaa backend API. Set {{baseUrl}} to http://localhost:8080/kumbukaa for local testing. Users can borrow from and lend to other users without needing to select a role."
   },
   "variable": [
     {
       "key": "baseUrl",
-      "value": "https://kumbukaa-app.onrender.com"
+      "value": "http://localhost:8080/kumbukaa"
     },
     {
       "key": "token",
@@ -63,7 +63,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"phoneNumber\": \"0712345678\",\n  \"password\": \"Password123!\",\n  \"confirmPassword\": \"Password123!\",\n  \"role\": \"BORROWER\"\n}"
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"phoneNumber\": \"0712345678\",\n  \"password\": \"Password123!\",\n  \"confirmPassword\": \"Password123!\"\n}"
             }
           },
           "response": []
@@ -88,6 +88,22 @@
               "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"Password123!\"\n}"
             }
           },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.token) pm.environment.set('token', jsonData.token);",
+                  "if (jsonData.refreshToken) pm.environment.set('refreshToken', jsonData.refreshToken);",
+                  "if (jsonData.id) pm.environment.set('authId', jsonData.id);",
+                  "if (jsonData.userId) pm.environment.set('userId', jsonData.userId);",
+                  "pm.test('Login returned token', function () { pm.expect(jsonData.token).to.be.a('string'); });"
+                ]
+              }
+            }
+          ],
           "response": []
         },
         {
@@ -312,9 +328,30 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"user\": { \"id\": {{userId}} },\n  \"lenderName\": \"Kumbukaa Lender\",\n  \"availableCapital\": 10000.0,\n  \"interestRate\": 5.0,\n  \"dateOfBirth\": \"1990-01-01\",\n  \"address\": \"123 Nairobi Ave\",\n  \"city\": \"Nairobi\",\n  \"postalCode\": \"00100\",\n  \"isVerified\": true\n}"
+              "raw": "{\n  \"userId\": {{userId}},\n  \"address\": \"456 Business Ave\",\n  \"city\": \"Nairobi\",\n  \"postalCode\": \"00200\",\n  \"availableCapital\": 100000.0,\n  \"interestRate\": 12.5,\n  \"dateOfBirth\": \"1995-05-15\"\n}"
             }
           },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  var jsonData = pm.response.json();",
+                  "  if (jsonData && jsonData.id) {",
+                  "    pm.environment.set('lenderId', jsonData.id);",
+                  "    pm.test('Lender ID captured', function () { pm.expect(jsonData.id).to.be.a('number'); });",
+                  "  } else {",
+                  "    pm.test('Create Lender returned no id', function () { pm.expect(typeof jsonData).to.not.equal('undefined'); });",
+                  "  }",
+                  "} catch (e) {",
+                  "  pm.test('Response is not JSON', function () { pm.expect(pm.response.text()).to.be.a('string'); });",
+                  "}"
+                ]
+              }
+            }
+          ],
           "response": []
         },
         {

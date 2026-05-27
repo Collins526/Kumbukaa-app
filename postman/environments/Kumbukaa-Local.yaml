@@ -1,0 +1,33 @@
+id: kumbukaa-env  
+name: Kumbukaa Local  
+version: '3.0'  
+description: Local development environment for Kumbukaa API  
+  
+variables:  
+  - key: baseUrl  
+    value: http://localhost:8080/kumbukaa  
+    enabled: true  
+  - key: token  
+    value: 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJqb2huQGV4YW1wbGUuY29tIiwidXNlcklkIjo2LCJpYXQiOjE3Nzk2MDM4ODMsImV4cCI6MTc3OTY5MDI4M30.av6QsGV3IpdeJhVKzEQI7xGZJsXz-rYtguB5l5scrZBbpIfuq02yDmm61GCQ3kzJ6Lzalcj_mLXBoX0pfrIk3A'  
+    enabled: true  
+  - key: refreshToken  
+    value: 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJqb2huQGV4YW1wbGUuY29tIiwidXNlcklkIjo2LCJpYXQiOjE3Nzk2MDM4ODMsImV4cCI6MTc4MDIwODY4M30.sMzO788T5fO181BHBSJrOC8-MpfprqFVxS8gLBaNQARP2hNdxXaleZ0VUBEGrXyYxAn2tgZD1Y5frR7_PnplLA'  
+    enabled: true  
+  - key: authId  
+    value: "6"  
+    enabled: true  
+  - key: userId  
+    value: "6"  
+    enabled: true  
+  - key: borrowerId  
+    value: "3"  
+    enabled: true  
+  - key: lenderId  
+    value: "7"  
+    enabled: true  
+  - key: loanId  
+    value: ""  
+    enabled: true  
+  - key: transactionId  
+    value: ""  
+    enabled: true  

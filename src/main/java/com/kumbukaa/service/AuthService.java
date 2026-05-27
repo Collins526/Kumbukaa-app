@@ -8,7 +8,7 @@ import com.kumbukaa.dto.RegisterRequest;
 import com.kumbukaa.entity.Auth;
 import com.kumbukaa.entity.Lender;
 import com.kumbukaa.entity.User;
-import com.kumbukaa.enums.Role;
+ 
 import com.kumbukaa.repository.AuthRepository;
 import com.kumbukaa.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -83,7 +83,6 @@ public class AuthService {
         newUser.setEmail(email);
         newUser.setPhoneNumber(request.getPhoneNumber());
         newUser.setPassword(passwordEncoder.encode(request.getPassword()));
-        newUser.setRole(Role.valueOf(request.getRole().trim().toUpperCase()));
         User savedUser = userRepository.save(newUser);
 
         Auth auth = new Auth();
@@ -96,14 +95,7 @@ public class AuthService {
 
         authRepository.save(auth);
 
-        Role userRole = Role.valueOf(request.getRole().trim().toUpperCase());
-        if (userRole == Role.BORROWER) {
-            ensureBorrowerRecord(savedUser);
-        } else if (userRole == Role.LENDER) {
-            ensureLenderRecord(savedUser);
-        }
-
-        return "User registered successfully. Please login to continue.";
+        return "User registered successfully. Choose to lend or borrow after login.";
     }
 
     private void ensureBorrowerRecord(User savedUser) {

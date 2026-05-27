@@ -1,6 +1,5 @@
 package com.kumbukaa.entity;
 
-import com.kumbukaa.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -20,7 +19,4 @@ public class User {
     private String email;
     private String phoneNumber;
     private String password;
-
-    @Enumerated(EnumType.STRING)
-    private Role role;  // ✅ Only one role field, using your Role enum
 }

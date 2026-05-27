@@ -1,6 +1,7 @@
 package com.kumbukaa.controller;
 
 
+import com.kumbukaa.dto.LenderDTO;
 import com.kumbukaa.entity.Lender;
 import com.kumbukaa.service.LenderService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,9 +20,9 @@ public class LenderController {
     private LenderService lenderService;
 
     @PostMapping("/create")
-    public ResponseEntity<?> createLender(@RequestBody Lender lender) {
+    public ResponseEntity<?> createLender(@RequestBody LenderDTO lenderDTO) {
         try {
-            Lender createdLender = lenderService.createLender(lender);
+            Lender createdLender = lenderService.createLenderFromDTO(lenderDTO);
             return new ResponseEntity<>(createdLender, HttpStatus.CREATED);
         } catch (Exception e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);

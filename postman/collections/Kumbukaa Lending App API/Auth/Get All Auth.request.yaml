@@ -1,0 +1,6 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/all"
+method: GET
+headers:
+  Authorization: Bearer {{token}}
+order: 9000

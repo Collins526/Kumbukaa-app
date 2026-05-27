@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/api/transactions/{{transactionId}}"
+method: PUT
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+body:
+  type: text
+  content: |-
+    {
+      "id": {{transactionId}},
+      "loan": { "id": {{loanId}} },
+      "amount": 1500.0,
+      "mpesaTransactionId": "MPESA123",
+      "status": "PENDING"
+    }
+order: 7000

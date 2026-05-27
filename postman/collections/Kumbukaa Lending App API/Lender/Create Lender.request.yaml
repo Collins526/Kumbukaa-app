@@ -1,0 +1,34 @@
+$kind: http-request
+url: "{{baseUrl}}/api/lender/create"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+body:
+  type: text
+  content: |-
+    {
+      "userId": {{userId}},
+      "address": "456 Business Ave",
+      "city": "Nairobi",
+      "postalCode": "00200",
+      "availableCapital": 100000.0,
+      "interestRate": 12.5,
+      "dateOfBirth": "1995-05-15"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      try {
+        var jsonData = pm.response.json();
+        if (jsonData && jsonData.id) {
+          pm.environment.set('lenderId', jsonData.id);
+          pm.test('Lender ID captured', function () { pm.expect(jsonData.id).to.be.a('number'); });
+        } else {
+          pm.test('Create Lender returned no id', function () { pm.expect(typeof jsonData).to.not.equal('undefined'); });
+        }
+      } catch (e) {
+        pm.test('Response is not JSON', function () { pm.expect(pm.response.text()).to.be.a('string'); });
+      }
+    language: text/javascript
+order: 1000

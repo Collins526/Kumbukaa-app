@@ -1,0 +1,6 @@
+$kind: http-request
+url: "{{baseUrl}}/api/lender/{{lenderId}}/lent/2500"
+method: PUT
+headers:
+  Authorization: Bearer {{token}}
+order: 7000
