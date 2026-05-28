@@ -8,7 +8,7 @@ import com.kumbukaa.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -32,6 +32,9 @@ public class UserService {
      * User is identified by their JWT token (passed as userId)
      */
     public User updateProfile(Long userId, UpdateProfileRequest request) throws Exception {
+        Objects.requireNonNull(userId, "userId is required");
+        Objects.requireNonNull(request, "request is required");
+
         // Find user by ID
         Optional<User> userOptional = userRepository.findById(userId);
         if (userOptional.isEmpty()) {
@@ -59,7 +62,7 @@ public class UserService {
             }
 
             // Check if new email already exists (excluding current user's email)
-            if (!user.getEmail().equals(newEmail)) {
+            if (!Objects.equals(user.getEmail(), newEmail)) {
                 if (userRepository.existsByEmail(newEmail)) {
                     throw new Exception("Email already exists");
                 }
@@ -75,10 +78,7 @@ public class UserService {
         User updatedUser = userRepository.save(user);
 
         // Update Auth record if email or username was changed
-        Optional<Auth> authOptional = authRepository.findByUserId(userId);
-        if (authOptional.isPresent()) {
-            Auth auth = authOptional.get();
-            
+        authRepository.findByUserId(userId).ifPresent(auth -> {
             // Update email in Auth if changed
             if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
                 auth.setEmail(request.getEmail().trim());
@@ -90,7 +90,7 @@ public class UserService {
             }
             
             authRepository.save(auth);
-        }
+        });
 
         return updatedUser;
     }
@@ -99,6 +99,7 @@ public class UserService {
      * Get user profile by ID
      */
     public User getUserProfile(Long userId) throws Exception {
+        Objects.requireNonNull(userId, "userId is required");
         Optional<User> userOptional = userRepository.findById(userId);
         if (userOptional.isEmpty()) {
             throw new Exception("User not found");
@@ -117,6 +118,7 @@ public class UserService {
      * Find user by email
      */
     public Optional<User> findByEmail(String email) {
+        Objects.requireNonNull(email, "email is required");
         return userRepository.findByEmail(email);
     }
 

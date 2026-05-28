@@ -27,9 +27,16 @@ public class TransactionController {
         return new ResponseEntity<>(service.logPayment(loanId, amount, mpesaCode), HttpStatus.CREATED);
     }
 
+    @PostMapping("/{loanId}/mark-sent")
+    public ResponseEntity<Transaction> markMoneyAsSent(@PathVariable Long loanId) {
+        return ResponseEntity.ok(service.markMoneyAsSent(loanId));
+    }
+
     @PostMapping("/{id}/approve")
-    public ResponseEntity<Transaction> approve(@PathVariable Long id) {
-        return ResponseEntity.ok(service.approveTransaction(id));
+    public ResponseEntity<Transaction> approvePayment(
+            @PathVariable Long id,
+            @RequestParam Double paymentAmount) {
+        return ResponseEntity.ok(service.approvePayment(id, paymentAmount));
     }
 
     @GetMapping("/{id}")

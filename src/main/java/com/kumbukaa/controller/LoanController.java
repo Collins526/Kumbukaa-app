@@ -32,6 +32,11 @@ public class LoanController {
         return ResponseEntity.ok(service.acceptLoan(id));
     }
 
+    @PostMapping("/{id}/reject")
+    public ResponseEntity<Loan> rejectLoan(@PathVariable Long id) {
+        return ResponseEntity.ok(service.rejectLoan(id));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<?> getLoanById(@PathVariable Long id) {
         Optional<Loan> loan = service.findById(id);

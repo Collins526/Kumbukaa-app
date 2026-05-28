@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
+import java.util.Objects;
 
 @Service
 public class LenderService {
@@ -25,19 +26,17 @@ public class LenderService {
         if (lenderDTO == null) {
             throw new IllegalArgumentException("Lender data cannot be null");
         }
-        if (lenderDTO.getUserId() == null) {
-            throw new IllegalArgumentException("userId is required");
-        }
+        Long userId = Objects.requireNonNull(lenderDTO.getUserId(), "userId is required");
 
-        Optional<User> userOptional = userRepository.findById(lenderDTO.getUserId());
+        Optional<User> userOptional = userRepository.findById(userId);
         if (userOptional.isEmpty()) {
-            throw new Exception("User with ID " + lenderDTO.getUserId() + " not found");
+            throw new Exception("User with ID " + userId + " not found");
         }
 
         User user = userOptional.get();
         
         // Check if lender already exists for this user
-        Optional<Lender> existingLender = lenderRepository.findByUserId(lenderDTO.getUserId());
+        Optional<Lender> existingLender = lenderRepository.findByUserId(userId);
         Lender lender;
         if (existingLender.isPresent()) {
             lender = existingLender.get();

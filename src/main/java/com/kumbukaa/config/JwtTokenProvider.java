@@ -12,13 +12,13 @@ import java.util.Date;
 @Component
 public class JwtTokenProvider {
 
-    @Value("${jwt.secret:kumbukaa-lending-app-secret-key-spring-boot-security-jwt-authentication}")
+    @Value("${app.jwt.secret:kumbukaa-lending-app-secret-key-spring-boot-security-jwt-authentication}")
     private String jwtSecret;
 
-    @Value("${jwt.expiration:86400000}")
+    @Value("${app.jwt.expiration:86400000}")
     private int jwtExpiration;
 
-    @Value("${jwt.refresh.expiration:604800000}")
+    @Value("${app.jwt.refresh.expiration:604800000}")
     private int refreshExpiration;
 
     private SecretKey getSigningKey() {

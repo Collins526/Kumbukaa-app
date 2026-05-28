@@ -10,9 +10,9 @@ values:
     value: ''
   - key: userId
     value: ''
-  - key: borrowerId
+  - key: lenderUserId
     value: ''
-  - key: lenderId
+  - key: borrowerUserId
     value: ''
   - key: loanId
     value: ''

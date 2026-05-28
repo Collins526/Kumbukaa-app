@@ -3,4 +3,4 @@ url: "{{baseUrl}}/api/loans/{{loanId}}/accept"
 method: POST
 headers:
   Authorization: Bearer {{token}}
-order: 2000
+order: 1000

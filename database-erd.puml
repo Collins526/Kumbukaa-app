@@ -1,0 +1,93 @@
+@startuml
+hide circle
+
+entity "app_user" as User {
+  * id : Long
+  --
+  name : String
+  email : String
+  phoneNumber : String
+  password : String
+}
+
+entity "auth" as Auth {
+  * id : Long
+  --
+  user_id : Long
+  password : String
+  email : String
+  username : String
+  is_verified : Boolean
+  token : TEXT
+  refresh_token : TEXT
+  last_login : LocalDateTime
+  is_active : Boolean
+  created_at : LocalDateTime
+  updated_at : LocalDateTime
+}
+
+entity "borrower" as Borrower {
+  * id : Long
+  --
+  user_id : Long
+  credit_score : Integer
+  id_number : String
+  employment_status : String
+  annual_income : Double
+  date_of_birth : LocalDate
+  address : String
+  city : String
+  postal_code : String
+  is_verified : Boolean
+  total_borrowed : Double
+  total_repaid : Double
+  created_at : LocalDateTime
+  updated_at : LocalDateTime
+}
+
+entity "lender" as Lender {
+  * id : Long
+  --
+  user_id : Long
+  lender_name : String
+  available_capital : Double
+  total_lent : Double
+  total_recovered : Double
+  interest_rate : Double
+  date_of_birth : LocalDate
+  address : String
+  city : String
+  postal_code : String
+  is_verified : Boolean
+  created_at : LocalDateTime
+  updated_at : LocalDateTime
+}
+
+entity "loan" as Loan {
+  * id : Long
+  --
+  lender_id : Long
+  borrower_id : Long
+  amount : Double
+  balance : Double
+  dueDate : LocalDate
+  status : LoanStatus
+}
+
+entity "notification" as Notification {
+  * id : Long
+  --
+  user_id : Long
+  message : String
+  isRead : Boolean
+  createdAt : LocalDateTime
+}
+
+User ||--|| Auth : user
+User ||--|| Borrower : user
+User ||--|| Lender : user
+User ||--o{ Loan : lender
+User ||--o{ Loan : borrower
+User ||--o{ Notification : user
+
+@enduml

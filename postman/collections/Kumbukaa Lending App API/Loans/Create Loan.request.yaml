@@ -1,10 +1,10 @@
 $kind: http-request
-url: "{{baseUrl}}/api/loans?lenderId={{lenderId}}&borrowerId={{borrowerId}}&amount=5000"
+url: "{{baseUrl}}/api/loans?lenderId={{lenderUserId}}&borrowerId={{borrowerUserId}}&amount=5000"
 method: POST
 headers:
   Authorization: Bearer {{token}}
 queryParams:
-  lenderId: "{{lenderId}}"
-  borrowerId: "{{borrowerId}}"
+  lenderId: "{{lenderUserId}}"
+  borrowerId: "{{borrowerUserId}}"
   amount: "5000"
-order: 1000
+order: 3000

@@ -1,17 +1,13 @@
 package com.kumbukaa.config;
 
 import com.kumbukaa.dto.RegisterRequest;
-import com.kumbukaa.entity.Auth;
-import com.kumbukaa.entity.User;
 import com.kumbukaa.repository.AuthRepository;
-import com.kumbukaa.repository.UserRepository;
 import com.kumbukaa.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.time.LocalDate;
 import java.util.Random;
 
 @Configuration
@@ -22,9 +18,6 @@ public class DataInitializer {
 
     @Autowired
     private AuthRepository authRepository;
-
-    @Autowired
-    private UserRepository userRepository;
 
     @Bean
     public CommandLineRunner initializeData() {

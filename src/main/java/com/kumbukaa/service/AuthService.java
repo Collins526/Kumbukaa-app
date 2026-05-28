@@ -11,15 +11,23 @@ import com.kumbukaa.entity.User;
  
 import com.kumbukaa.repository.AuthRepository;
 import com.kumbukaa.repository.UserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,11 +52,17 @@ public class AuthService {
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
-    @Autowired
+    @Autowired(required = false)
     private JavaMailSender mailSender;
 
     @Value("${spring.mail.username}")
     private String mailFrom;
+
+    @Value("${app.resend.api-key:}")
+    private String resendApiKey;
+
+    @Value("${app.resend.from-email:noreply@kumbukaa.com}")
+    private String resendFromEmail;
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
@@ -94,6 +108,8 @@ public class AuthService {
         auth.setIsActive(true);
 
         authRepository.save(auth);
+        ensureBorrowerRecord(savedUser);
+        ensureLenderRecord(savedUser);
 
         return "user registered succefully";
     }
@@ -208,8 +224,8 @@ public class AuthService {
 
         String otp = String.format("%06d", secureRandom.nextInt(1_000_000));
         LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(10);
-        otpStore.put(email.trim().toLowerCase(), new OtpDetails(otp, expiresAt));
-        sendOtpByEmail(email.trim(), otp);
+        otpStore.put(normalizedEmail.toLowerCase(), new OtpDetails(otp, expiresAt));
+        sendOtpByEmail(normalizedEmail, otp);
         return "OTP request accepted. Check your email for the code.";
     }
 
@@ -229,22 +245,58 @@ public class AuthService {
     }
 
     private void sendOtpByEmail(String email, String otp) {
+        String subject = "Kumbukaa - One Time Password (OTP)";
+        String body = "Your OTP for Kumbukaa Lending App is: " + otp + "\n\n"
+                + "This OTP will expire in 10 minutes.\n"
+                + "Do not share this code with anyone.\n\n"
+                + "If you did not request this code, please ignore this email.";
+
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(email);
-            message.setSubject("Kumbukaa - One Time Password (OTP)");
-            message.setText("Your OTP for Kumbukaa Lending App is: " + otp + "\n\n"
-                    + "This OTP will expire in 10 minutes.\n"
-                    + "Do not share this code with anyone.\n\n"
-                    + "If you did not request this code, please ignore this email.");
-            message.setFrom(mailFrom);
-            
-            mailSender.send(message);
+            if (resendApiKey != null && !resendApiKey.isBlank()) {
+                sendEmailWithResend(email, subject, body);
+            } else if (mailSender != null) {
+                SimpleMailMessage message = new SimpleMailMessage();
+                message.setTo(email);
+                message.setSubject(subject);
+                message.setText(body);
+                message.setFrom(mailFrom);
+                mailSender.send(message);
+            } else {
+                throw new IllegalStateException("No email delivery provider configured");
+            }
             System.out.println("[OTP] Email sent successfully to: " + email);
         } catch (Exception e) {
             System.err.println("[OTP] Failed to send email to " + email + ": " + e.getMessage());
             System.err.println("[OTP] Fallback: OTP for " + email + " is " + otp + " (valid 10 minutes)");
             e.printStackTrace();
+        }
+    }
+
+    private void sendEmailWithResend(String email, String subject, String body) throws Exception {
+        RestTemplate restTemplate = new RestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(resendApiKey);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("from", resendFromEmail);
+        payload.put("to", email);
+        payload.put("subject", subject);
+        payload.put("text", body);
+
+        ObjectMapper mapper = new ObjectMapper();
+        String json = mapper.writeValueAsString(payload);
+
+        HttpEntity<String> request = new HttpEntity<>(json, headers);
+        ResponseEntity<String> response = restTemplate.exchange(
+                "https://api.resend.com/emails",
+                HttpMethod.POST,
+                request,
+                String.class
+        );
+
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            throw new IllegalStateException("Resend email failed: " + response.getStatusCode() + " " + response.getBody());
         }
     }
 

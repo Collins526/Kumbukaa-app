@@ -1,5 +1,5 @@
 package com.kumbukaa.enums;
 
 public enum LoanStatus {
-    CREATED, ACTIVE, PAUSED, SETTLED
+    PENDING, ACTIVE, PAUSED, REJECTED, SETTLED
 }
