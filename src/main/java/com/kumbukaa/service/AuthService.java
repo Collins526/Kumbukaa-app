@@ -225,8 +225,13 @@ public class AuthService {
         String otp = String.format("%06d", secureRandom.nextInt(1_000_000));
         LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(10);
         otpStore.put(normalizedEmail.toLowerCase(), new OtpDetails(otp, expiresAt));
-        sendOtpByEmail(normalizedEmail, otp);
-        return "OTP request accepted. Check your email for the code.";
+        try {
+            sendOtpByEmail(normalizedEmail, otp);
+            return "OTP request accepted. Check your email for the code.";
+        } catch (Exception e) {
+            otpStore.remove(normalizedEmail.toLowerCase());
+            throw new Exception("Unable to send OTP email: " + e.getMessage(), e);
+        }
     }
 
     private boolean validateOtp(String email, String otp) {
@@ -244,32 +249,26 @@ public class AuthService {
         return true;
     }
 
-    private void sendOtpByEmail(String email, String otp) {
+    private void sendOtpByEmail(String email, String otp) throws Exception {
         String subject = "Kumbukaa - One Time Password (OTP)";
         String body = "Your OTP for Kumbukaa Lending App is: " + otp + "\n\n"
                 + "This OTP will expire in 10 minutes.\n"
                 + "Do not share this code with anyone.\n\n"
                 + "If you did not request this code, please ignore this email.";
 
-        try {
-            if (resendApiKey != null && !resendApiKey.isBlank()) {
-                sendEmailWithResend(email, subject, body);
-            } else if (mailSender != null) {
-                SimpleMailMessage message = new SimpleMailMessage();
-                message.setTo(email);
-                message.setSubject(subject);
-                message.setText(body);
-                message.setFrom(mailFrom);
-                mailSender.send(message);
-            } else {
-                throw new IllegalStateException("No email delivery provider configured");
-            }
-            System.out.println("[OTP] Email sent successfully to: " + email);
-        } catch (Exception e) {
-            System.err.println("[OTP] Failed to send email to " + email + ": " + e.getMessage());
-            System.err.println("[OTP] Fallback: OTP for " + email + " is " + otp + " (valid 10 minutes)");
-            e.printStackTrace();
+        if (resendApiKey != null && !resendApiKey.isBlank()) {
+            sendEmailWithResend(email, subject, body);
+        } else if (mailSender != null) {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(email);
+            message.setSubject(subject);
+            message.setText(body);
+            message.setFrom(mailFrom);
+            mailSender.send(message);
+        } else {
+            throw new IllegalStateException("No email delivery provider configured");
         }
+        System.out.println("[OTP] Email sent successfully to: " + email);
     }
 
     private void sendEmailWithResend(String email, String subject, String body) throws Exception {
