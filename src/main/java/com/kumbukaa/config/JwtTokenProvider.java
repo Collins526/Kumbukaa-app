@@ -103,4 +103,18 @@ public class JwtTokenProvider {
             return true;
         }
     }
+
+    public Long getTokenExpiration(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            Date expiration = claims.getExpiration();
+            return expiration != null ? expiration.getTime() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
 }

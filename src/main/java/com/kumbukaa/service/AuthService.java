@@ -28,6 +28,7 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -73,7 +74,7 @@ public class AuthService {
         return email != null && EMAIL_PATTERN.matcher(email.trim()).matches();
     }
 
-    public String register(RegisterRequest request) throws Exception {
+    public AuthResponse register(RegisterRequest request) throws Exception {
         String email = request.getEmail() == null ? null : request.getEmail().trim();
         if (email == null || email.isEmpty()) {
             throw new Exception("Email is required");
@@ -106,12 +107,28 @@ public class AuthService {
         auth.setUsername(email); // Set username to email
         auth.setIsVerified(true);
         auth.setIsActive(true);
-
         authRepository.save(auth);
+
         ensureBorrowerRecord(savedUser);
         ensureLenderRecord(savedUser);
 
-        return "user registered succefully";
+        String token = jwtTokenProvider.generateToken(email, savedUser.getId());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(email, savedUser.getId());
+        auth.setToken(token);
+        auth.setRefreshToken(refreshToken);
+        authRepository.save(auth);
+
+        AuthResponse response = new AuthResponse();
+        response.setId(auth.getId());
+        response.setUserId(savedUser.getId());
+        response.setEmail(email);
+        response.setToken(token);
+        response.setRefreshToken(refreshToken);
+        response.setTokenExpiration(jwtTokenProvider.getTokenExpiration(token));
+        response.setIsVerified(auth.getIsVerified());
+        response.setMessage("User registered successfully");
+
+        return response;
     }
 
     private void ensureBorrowerRecord(User savedUser) {
@@ -202,6 +219,7 @@ public class AuthService {
         response.setEmail(updatedAuth.getEmail());
         response.setToken(token);
         response.setRefreshToken(refreshToken);
+        response.setTokenExpiration(jwtTokenProvider.getTokenExpiration(token));
         response.setIsVerified(updatedAuth.getIsVerified());
         response.setMessage("Login successful");
 
@@ -286,12 +304,19 @@ public class AuthService {
         ObjectMapper mapper = new ObjectMapper();
         String json = mapper.writeValueAsString(payload);
 
-        HttpEntity<String> request = new HttpEntity<>(json, headers);
+        // defensive null-checks to satisfy null-safety analysis
+        String apiKey = Objects.requireNonNull(resendApiKey, "resendApiKey is required");
+        String fromEmail = Objects.requireNonNull(resendFromEmail, "resendFromEmail is required");
+        String payloadJson = Objects.requireNonNull(json, "payload json must not be null");
+
+        headers.setBearerAuth(apiKey);
+
+        HttpEntity<String> request = new HttpEntity<>(payloadJson, headers);
         ResponseEntity<String> response = restTemplate.exchange(
-                "https://api.resend.com/emails",
-                HttpMethod.POST,
-                request,
-                String.class
+            "https://api.resend.com/emails",
+            HttpMethod.POST,
+            request,
+            String.class
         );
 
         if (!response.getStatusCode().is2xxSuccessful()) {
@@ -348,6 +373,7 @@ public class AuthService {
         response.setEmail(updatedAuth.getEmail());
         response.setToken(newToken);
         response.setRefreshToken(newRefreshToken);
+        response.setTokenExpiration(jwtTokenProvider.getTokenExpiration(newToken));
         response.setIsVerified(updatedAuth.getIsVerified());
         response.setMessage("Token refreshed successfully");
 

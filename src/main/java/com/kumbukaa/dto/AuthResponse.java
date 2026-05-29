@@ -10,6 +10,7 @@ public class AuthResponse {
     private String email;
     private String token;
     private String refreshToken;
+    private Long tokenExpiration;
     private Boolean isVerified;
     private String message;
 }

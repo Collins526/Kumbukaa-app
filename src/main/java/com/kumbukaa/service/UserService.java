@@ -1,7 +1,6 @@
 package com.kumbukaa.service;
 
 import com.kumbukaa.dto.UpdateProfileRequest;
-import com.kumbukaa.entity.Auth;
 import com.kumbukaa.entity.User;
 import com.kumbukaa.repository.AuthRepository;
 import com.kumbukaa.repository.UserRepository;

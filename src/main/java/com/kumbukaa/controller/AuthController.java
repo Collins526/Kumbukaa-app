@@ -26,8 +26,8 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
         try {
-            String message = authService.register(request);
-            return new ResponseEntity<>(message, HttpStatus.CREATED);
+            AuthResponse response = authService.register(request);
+            return new ResponseEntity<>(response, HttpStatus.CREATED);
         } catch (Exception e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
@@ -39,7 +39,7 @@ public class AuthController {
             AuthResponse response = authService.login(request);
             return new ResponseEntity<>(response, HttpStatus.OK);
         } catch (Exception e) {
-            return new ResponseEntity<>(new AuthResponse(null, null, null, null, null, false, e.getMessage()), HttpStatus.UNAUTHORIZED);
+            return new ResponseEntity<>(new AuthResponse(null, null, null, null, null, null, false, e.getMessage()), HttpStatus.UNAUTHORIZED);
         }
     }
 
@@ -59,7 +59,7 @@ public class AuthController {
             AuthResponse response = authService.refreshToken(request.getRefreshToken());
             return new ResponseEntity<>(response, HttpStatus.OK);
         } catch (Exception e) {
-            return new ResponseEntity<>(new AuthResponse(null, null, null, null, null, false, e.getMessage()), HttpStatus.UNAUTHORIZED);
+            return new ResponseEntity<>(new AuthResponse(null, null, null, null, null, null, false, e.getMessage()), HttpStatus.UNAUTHORIZED);
         }
     }
 
@@ -84,7 +84,7 @@ public class AuthController {
             if (isValid) {
                 String email = authService.getUsernameFromToken(jwtToken);
                 Long userId = authService.getUserIdFromToken(jwtToken);
-                return new ResponseEntity<>(new AuthResponse(null, userId, email, null, null, true, "Token is valid"), HttpStatus.OK);
+                return new ResponseEntity<>(new AuthResponse(null, userId, email, null, null, null, true, "Token is valid"), HttpStatus.OK);
             }
             return new ResponseEntity<>("Token is invalid or expired", HttpStatus.UNAUTHORIZED);
         } catch (Exception e) {
