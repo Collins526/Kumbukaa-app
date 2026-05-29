@@ -50,7 +50,7 @@ SERVER_PORT=8080
    - Alternatively, deploy manually from Render dashboard
 
 ### Health Check
-- The Dockerfile includes a health check: `/kumbukaa/health`
+- The Dockerfile includes a health check: `/health`
 - Ensure your Spring Boot app exposes this endpoint
 - If not available, add one or remove/update the health check URL
 
@@ -149,10 +149,10 @@ If either returns `1`, the DB is reachable and authentication succeeds.
 com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
 ```
 
-- Also verify the application health endpoint (configured at `/kumbukaa/health`) from the public service URL:
+- Also verify the application health endpoint (configured at `/health`) from the public service URL:
 
 ```bash
-curl -f https://<your-render-service>.onrender.com/kumbukaa/health
+curl -f https://<your-render-service>.onrender.com/health
 ```
 
 A 200 response indicates the application is running and can reach the database (if your health endpoint checks DB connectivity). If your health endpoint does not check DB, verify DB-specific checks in logs or add a DB health check endpoint.

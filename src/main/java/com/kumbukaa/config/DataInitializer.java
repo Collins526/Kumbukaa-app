@@ -22,10 +22,15 @@ public class DataInitializer {
     @Bean
     public CommandLineRunner initializeData() {
         return args -> {
-            if (authRepository.count() == 0) {
-                seedUsers(5);
-            } else {
-                System.out.println("Database already seeded. Skipping initial data population.");
+            try {
+                if (authRepository.count() == 0) {
+                    seedUsers(5);
+                } else {
+                    System.out.println("Database already seeded. Skipping initial data population.");
+                }
+            } catch (Exception e) {
+                System.err.println("Database unavailable during startup data initialization: " + e.getMessage());
+                System.err.println("Continuing startup without seeding. DB may be restored later.");
             }
         };
     }

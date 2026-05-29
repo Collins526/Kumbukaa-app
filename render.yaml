@@ -46,7 +46,7 @@ services:
         value: prod
     buildCommand: ""
     startCommand: ""
-    healthCheckPath: /kumbukaa/health
+    healthCheckPath: /health
     buildFilter:
       paths:
         - source: /
