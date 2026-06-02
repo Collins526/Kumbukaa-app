@@ -18,5 +18,3 @@ values:
     value: ''
   - key: transactionId
     value: ''
-  - key: bearerToken
-    value: ''

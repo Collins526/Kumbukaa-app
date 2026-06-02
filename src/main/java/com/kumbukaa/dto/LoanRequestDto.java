@@ -10,7 +10,6 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LoanRequestDto {
-    private String borrowerPhone;
     private String lenderPhone;
     private Double amount;
     private String dueDate;

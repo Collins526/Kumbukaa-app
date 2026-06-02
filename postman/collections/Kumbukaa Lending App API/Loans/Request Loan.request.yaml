@@ -2,24 +2,23 @@ $kind: http-request
 url: "{{baseUrl}}/api/loans/request"
 method: POST
 headers:
-  Content-Type: application/json
   Authorization: Bearer {{bearerToken}}
+  Content-Type: application/json
 body:
   type: text
   content: |-
     {
-      "borrowerPhone": "{{borrowerPhone}}",
       "lenderPhone": "{{lenderPhone}}",
       "amount": 7000,
       "dueDate": "2026-06-30"
     }
+auth:
+  type: bearer
+  credentials:
+    token: "{{bearerToken}}"
 scripts:
   - type: beforeRequest
-    code: |-
-      if (!pm.environment.get('bearerToken')) {
-        pm.test('Bearer token is required', function () { pm.expect(pm.environment.get('bearerToken')).to.be.a('string'); });
-        throw new Error('Missing borrower bearer token. Run Login first.');
-      }
+    code: pm.test('bearerToken is present', function () { pm.expect(pm.environment.get('bearerToken')).to.be.a('string').and.not.empty; });
     language: text/javascript
   - type: afterResponse
     code: |-

@@ -31,14 +31,17 @@ public class UserService {
      * Update user profile after successful authentication
      * User is identified by their JWT token (passed as userId)
      */
-    @SuppressWarnings("null")
     public User updateProfile(Long userId, UpdateProfileRequest request) throws Exception {
         Objects.requireNonNull(userId, "userId is required");
         Objects.requireNonNull(request, "request is required");
 
         // Find user by ID
         Optional<User> userOptional = userRepository.findById(userId);
-        User user = userOptional.orElseThrow(() -> new Exception("User not found"));
+        if (userOptional.isEmpty()) {
+            throw new Exception("User not found");
+        }
+
+        User user = userOptional.get();
         
         // Update name if provided
         if (request.getName() != null && !request.getName().trim().isEmpty()) {
@@ -47,7 +50,12 @@ public class UserService {
 
         // Update phone number if provided
         if (request.getPhoneNumber() != null && !request.getPhoneNumber().trim().isEmpty()) {
-            user.setPhoneNumber(request.getPhoneNumber().trim());
+            String newPhoneNumber = request.getPhoneNumber().trim();
+            if (!Objects.equals(user.getPhoneNumber(), newPhoneNumber)
+                    && userRepository.existsByPhoneNumber(newPhoneNumber)) {
+                throw new Exception("Phone number already exists");
+            }
+            user.setPhoneNumber(newPhoneNumber);
         }
 
         // Update email if provided (with validation and duplicate check)
@@ -78,7 +86,7 @@ public class UserService {
         // Update Auth record if email or username was changed
         Optional<Auth> authOptional = authRepository.findByUserId(userId);
         if (authOptional.isPresent()) {
-            Auth auth = authOptional.orElseThrow(() -> new Exception("Auth record not found"));
+            Auth auth = Objects.requireNonNull(authOptional.get(), "auth is required");
 
             // Update email in Auth if changed
             if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {

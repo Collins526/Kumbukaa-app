@@ -11,6 +11,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -94,8 +95,8 @@ class LoanServiceTest {
     @Test
     void testRequestLoanByPhone_Success() {
         // Arrange
-        when(userRepository.findByPhoneNumber("0700000001")).thenReturn(Optional.of(lender));
-        when(userRepository.findByPhoneNumber("0700000002")).thenReturn(Optional.of(borrower));
+        when(userRepository.findAllByPhoneNumber("0700000001")).thenReturn(List.of(lender));
+        when(userRepository.findAllByPhoneNumber("0700000002")).thenReturn(List.of(borrower));
         when(loanRepository.save(any(Loan.class))).thenAnswer(invocation -> invocation.getArgument(0, Loan.class));
 
         // Act

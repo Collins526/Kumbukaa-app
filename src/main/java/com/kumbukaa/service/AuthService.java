@@ -93,10 +93,18 @@ public class AuthService {
             throw new Exception("Email already exists");
         }
 
+        String phoneNumber = request.getPhoneNumber() == null ? null : request.getPhoneNumber().trim();
+        if (phoneNumber == null || phoneNumber.isEmpty()) {
+            throw new Exception("Phone number is required");
+        }
+        if (userRepository.existsByPhoneNumber(phoneNumber)) {
+            throw new Exception("Phone number already exists");
+        }
+
         User newUser = new User();
         newUser.setName(request.getName());
         newUser.setEmail(email);
-        newUser.setPhoneNumber(request.getPhoneNumber());
+        newUser.setPhoneNumber(phoneNumber);
         newUser.setPassword(passwordEncoder.encode(request.getPassword()));
         User savedUser = userRepository.save(newUser);
 

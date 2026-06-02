@@ -114,7 +114,7 @@ SPRING_PROFILES_ACTIVE=prod
 
 - Neon example (requires SSL and channel binding):
 ```
-jdbc:postgresql://ep-frosty-tree-am7wpkc4-pooler.c-5.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+jdbc:postgresql://<your-neon-host>/<your-database>?sslmode=require&channel_binding=require
 ```
 
 - Standard Postgres with SSL:

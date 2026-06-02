@@ -3,6 +3,7 @@ package com.kumbukaa.controller;
 import com.kumbukaa.dto.LoanRequestDto;
 import com.kumbukaa.entity.Loan;
 import com.kumbukaa.service.LoanService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,12 +30,23 @@ public class LoanController {
     }
 
     @PostMapping("/request")
-    public ResponseEntity<Loan> requestLoanByPhone(@RequestBody LoanRequestDto request) {
+    public ResponseEntity<Loan> requestLoanByPhone(HttpServletRequest servletRequest, @RequestBody LoanRequestDto request) {
         if (request == null) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
-        String borrowerPhone = request.getBorrowerPhone();
+        Object userIdAttr = servletRequest.getAttribute("userId");
+        Long borrowerId = null;
+        if (userIdAttr instanceof Long) {
+            borrowerId = (Long) userIdAttr;
+        } else if (userIdAttr instanceof String) {
+            borrowerId = Long.valueOf((String) userIdAttr);
+        }
+
+        if (borrowerId == null) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+
         String lenderPhone = request.getLenderPhone();
         Double amount = request.getAmount();
         String dueDate = request.getDueDate();
@@ -43,7 +55,7 @@ public class LoanController {
         if (dueDate != null && !dueDate.isBlank()) {
             parsedDue = java.time.LocalDate.parse(dueDate);
         }
-        return new ResponseEntity<>(service.requestLoan(borrowerPhone, lenderPhone, amount, parsedDue), HttpStatus.CREATED);
+        return new ResponseEntity<>(service.requestLoan(borrowerId, lenderPhone, amount, parsedDue), HttpStatus.CREATED);
     }
 
     @PostMapping("/{id}/accept")

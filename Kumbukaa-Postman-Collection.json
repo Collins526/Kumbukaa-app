@@ -396,15 +396,25 @@
         {
           "name": "Request Loan",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "POST",
             "header": [
               {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
                 "key": "Authorization",
                 "value": "Bearer {{bearerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
             "url": {
@@ -414,19 +424,16 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"borrowerPhone\": \"{{borrowerPhone}}\",\n  \"lenderPhone\": \"{{lenderPhone}}\",\n  \"amount\": 7000,\n  \"dueDate\": \"2026-06-30\"\n}"
+              "raw": "{\n  \"lenderPhone\": \"{{lenderPhone}}\",\n  \"amount\": 7000,\n  \"dueDate\": \"2026-06-30\"\n}"
             }
-          },
+          }, 
           "event": [
             {
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "if (!pm.environment.get('bearerToken')) {",
-                  "  pm.test('Bearer token is required', function () { pm.expect(pm.environment.get('bearerToken')).to.be.a('string'); });",
-                  "  throw new Error('Missing borrower bearer token. Run Login first.');",
-                  "}"
+                  "pm.test('bearerToken is present', function () { pm.expect(pm.environment.get('bearerToken')).to.be.a('string').and.not.empty; });"
                 ]
               }
             },

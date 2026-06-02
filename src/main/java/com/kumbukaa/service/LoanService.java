@@ -61,8 +61,23 @@ public class LoanService {
             throw new IllegalArgumentException("Lender and borrower must be different users");
         }
 
-        User lender = userRepo.findByPhoneNumber(lenderPhone).orElseThrow(() -> new IllegalArgumentException("Lender not found"));
-        User borrower = userRepo.findByPhoneNumber(borrowerPhone).orElseThrow(() -> new IllegalArgumentException("Borrower not found"));
+        List<User> lenderMatches = userRepo.findAllByPhoneNumber(lenderPhone);
+        if (lenderMatches.isEmpty()) {
+            throw new IllegalArgumentException("Lender not found");
+        }
+        if (lenderMatches.size() > 1) {
+            throw new IllegalStateException("Multiple users found for lender phone number: " + lenderPhone + ". Resolve duplicate accounts before requesting a loan.");
+        }
+        User lender = lenderMatches.get(0);
+
+        List<User> borrowerMatches = userRepo.findAllByPhoneNumber(borrowerPhone);
+        if (borrowerMatches.isEmpty()) {
+            throw new IllegalArgumentException("Borrower not found");
+        }
+        if (borrowerMatches.size() > 1) {
+            throw new IllegalStateException("Multiple users found for borrower phone number: " + borrowerPhone + ". Resolve duplicate accounts before requesting a loan.");
+        }
+        User borrower = borrowerMatches.get(0);
 
         Loan loan = new Loan();
         loan.setLender(lender);
@@ -76,6 +91,14 @@ public class LoanService {
         notificationService.sendNotification(lender,
                 String.format("New loan request from %s for Ksh %.2f due %s. Review and respond.", borrower.getName(), amount, dueDate != null ? dueDate.toString() : "N/A"));
         return savedLoan;
+    }
+
+    public Loan requestLoan(Long borrowerId, String lenderPhone, Double amount, java.time.LocalDate dueDate) {
+        if (borrowerId == null) {
+            throw new IllegalArgumentException("Borrower ID must not be null");
+        }
+        User borrower = userRepo.findById(borrowerId).orElseThrow(() -> new IllegalArgumentException("Borrower not found"));
+        return requestLoan(borrower.getPhoneNumber(), lenderPhone, amount, dueDate);
     }
 
     public Loan acceptLoan(Long loanId) {

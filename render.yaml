@@ -5,16 +5,16 @@ services:
     dockerfilePath: ./Dockerfile
     envVars:
       - key: SPRING_DATASOURCE_URL
-        description: jdbc:postgresql://ep-frosty-tree-am7wpkc4-pooler.c-5.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+        description: JDBC connection URL for production database
         sync: false
       - key: SPRING_DATASOURCE_USERNAME
-        description: neondb_owner
+        description: Database user name for production
         sync: false
       - key: SPRING_DATASOURCE_PASSWORD
-        description: npg_UfAiLj9crbe1
+        description: Database password for production
         sync: false
-      - key: JWT_SECRET
-        description: kumbukaa-lending-app-secret-key-spring-boot-security-jwt-authentication-super-secure-key
+      - key: APP_JWT_SECRET
+        description: JWT signing secret for production
         sync: false
       - key: SPRING_MAIL_HOST
         value: smtp.gmail.com
@@ -25,11 +25,9 @@ services:
         description: SMTP port for email delivery
         sync: false
       - key: SPRING_MAIL_USERNAME
-        value: collinskibet526@gmail.com
         description: Email username for notifications
         sync: false
       - key: SPRING_MAIL_PASSWORD
-        value: qclbqoeoiblbphnw
         description: Email password or app password for notifications
         sync: false
       - key: SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH
@@ -39,6 +37,13 @@ services:
       - key: SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE
         value: "true"
         description: SMTP STARTTLS enabled
+        sync: false
+      - key: APP_RESEND_API_KEY
+        description: Resend API key used by the email service
+        sync: false
+      - key: APP_RESEND_FROM_EMAIL
+        value: onboarding@resend.dev
+        description: Verified sender email address for Resend
         sync: false
       - key: SERVER_PORT
         value: "8080"
