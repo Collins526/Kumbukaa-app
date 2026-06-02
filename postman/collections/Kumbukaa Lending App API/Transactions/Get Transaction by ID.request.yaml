@@ -3,4 +3,4 @@ url: "{{baseUrl}}/api/transactions/{{transactionId}}"
 method: GET
 headers:
   Authorization: Bearer {{token}}
-order: 3000
+order: 4000

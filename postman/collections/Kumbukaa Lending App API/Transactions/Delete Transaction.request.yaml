@@ -3,4 +3,4 @@ url: "{{baseUrl}}/api/transactions/{{transactionId}}"
 method: DELETE
 headers:
   Authorization: Bearer {{token}}
-order: 8000
+order: 9000

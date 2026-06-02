@@ -1,6 +1,7 @@
 package com.kumbukaa.service;
 
 import com.kumbukaa.dto.UpdateProfileRequest;
+import com.kumbukaa.entity.Auth;
 import com.kumbukaa.entity.User;
 import com.kumbukaa.repository.AuthRepository;
 import com.kumbukaa.repository.UserRepository;
@@ -30,17 +31,14 @@ public class UserService {
      * Update user profile after successful authentication
      * User is identified by their JWT token (passed as userId)
      */
+    @SuppressWarnings("null")
     public User updateProfile(Long userId, UpdateProfileRequest request) throws Exception {
         Objects.requireNonNull(userId, "userId is required");
         Objects.requireNonNull(request, "request is required");
 
         // Find user by ID
         Optional<User> userOptional = userRepository.findById(userId);
-        if (userOptional.isEmpty()) {
-            throw new Exception("User not found");
-        }
-
-        User user = userOptional.get();
+        User user = userOptional.orElseThrow(() -> new Exception("User not found"));
         
         // Update name if provided
         if (request.getName() != null && !request.getName().trim().isEmpty()) {
@@ -74,10 +72,14 @@ public class UserService {
         }
 
         // Save updated user
-        User updatedUser = userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        User updatedUser = Objects.requireNonNull(savedUser, "Failed to save user");
 
         // Update Auth record if email or username was changed
-        authRepository.findByUserId(userId).ifPresent(auth -> {
+        Optional<Auth> authOptional = authRepository.findByUserId(userId);
+        if (authOptional.isPresent()) {
+            Auth auth = authOptional.orElseThrow(() -> new Exception("Auth record not found"));
+
             // Update email in Auth if changed
             if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
                 auth.setEmail(request.getEmail().trim());
@@ -89,7 +91,7 @@ public class UserService {
             }
             
             authRepository.save(auth);
-        });
+        }
 
         return updatedUser;
     }

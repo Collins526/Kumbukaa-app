@@ -15,6 +15,7 @@ scripts:
     code: |-
       var jsonData = pm.response.json();
       if (jsonData.token) pm.environment.set('token', jsonData.token);
+      if (jsonData.token) pm.environment.set('bearerToken', jsonData.token);
       if (jsonData.refreshToken) pm.environment.set('refreshToken', jsonData.refreshToken);
       if (jsonData.id) pm.environment.set('authId', jsonData.id);
       if (jsonData.userId) pm.environment.set('userId', jsonData.userId);

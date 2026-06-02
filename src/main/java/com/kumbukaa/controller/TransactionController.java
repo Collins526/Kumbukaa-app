@@ -27,6 +27,17 @@ public class TransactionController {
         return new ResponseEntity<>(service.logPayment(loanId, amount, mpesaCode), HttpStatus.CREATED);
     }
 
+    @PostMapping("/pay-by-phone")
+    public ResponseEntity<Transaction> payByPhone(
+            @RequestParam String payerPhone,
+            @RequestParam Long loanId,
+            @RequestParam Double amount,
+            @RequestParam String mpesaCode) {
+
+        // Payer phone is accepted for client-side identification; service.logPayment performs loan/payment validations.
+        return new ResponseEntity<>(service.logPayment(loanId, amount, mpesaCode), HttpStatus.CREATED);
+    }
+
     @PostMapping("/{loanId}/mark-sent")
     public ResponseEntity<Transaction> markMoneyAsSent(@PathVariable Long loanId) {
         return ResponseEntity.ok(service.markMoneyAsSent(loanId));

@@ -50,6 +50,34 @@ public class LoanService {
         return savedLoan;
     }
 
+    public Loan requestLoan(String borrowerPhone, String lenderPhone, Double amount, java.time.LocalDate dueDate) {
+        if (borrowerPhone == null || lenderPhone == null) {
+            throw new IllegalArgumentException("Borrower and lender phone numbers must not be null");
+        }
+        if (amount == null || amount <= 0) {
+            throw new IllegalArgumentException("Loan amount must be greater than zero");
+        }
+        if (borrowerPhone.equals(lenderPhone)) {
+            throw new IllegalArgumentException("Lender and borrower must be different users");
+        }
+
+        User lender = userRepo.findByPhoneNumber(lenderPhone).orElseThrow(() -> new IllegalArgumentException("Lender not found"));
+        User borrower = userRepo.findByPhoneNumber(borrowerPhone).orElseThrow(() -> new IllegalArgumentException("Borrower not found"));
+
+        Loan loan = new Loan();
+        loan.setLender(lender);
+        loan.setBorrower(borrower);
+        loan.setAmount(amount);
+        loan.setBalance(amount);
+        loan.setDueDate(dueDate);
+        loan.setStatus(LoanStatus.PENDING);
+
+        Loan savedLoan = loanRepo.save(loan);
+        notificationService.sendNotification(lender,
+                String.format("New loan request from %s for Ksh %.2f due %s. Review and respond.", borrower.getName(), amount, dueDate != null ? dueDate.toString() : "N/A"));
+        return savedLoan;
+    }
+
     public Loan acceptLoan(Long loanId) {
         if (loanId == null) {
             throw new IllegalArgumentException("Loan ID must not be null");

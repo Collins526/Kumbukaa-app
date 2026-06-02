@@ -1,5 +1,6 @@
 package com.kumbukaa.controller;
 
+import com.kumbukaa.dto.LoanRequestDto;
 import com.kumbukaa.entity.Loan;
 import com.kumbukaa.service.LoanService;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +26,24 @@ public class LoanController {
             @RequestParam Double amount) {
 
         return new ResponseEntity<>(service.createLoan(lenderId, borrowerId, amount), HttpStatus.CREATED);
+    }
+
+    @PostMapping("/request")
+    public ResponseEntity<Loan> requestLoanByPhone(@RequestBody LoanRequestDto request) {
+        if (request == null) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+
+        String borrowerPhone = request.getBorrowerPhone();
+        String lenderPhone = request.getLenderPhone();
+        Double amount = request.getAmount();
+        String dueDate = request.getDueDate();
+
+        java.time.LocalDate parsedDue = null;
+        if (dueDate != null && !dueDate.isBlank()) {
+            parsedDue = java.time.LocalDate.parse(dueDate);
+        }
+        return new ResponseEntity<>(service.requestLoan(borrowerPhone, lenderPhone, amount, parsedDue), HttpStatus.CREATED);
     }
 
     @PostMapping("/{id}/accept")

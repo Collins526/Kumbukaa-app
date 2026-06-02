@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/transactions/pay-by-phone?payerPhone={{borrowerPhone}}&loanId={{loanId}}&amount=1500&mpesaCode=MPESA123"
+method: POST
+headers:
+  Authorization: Bearer {{token}}
+queryParams:
+  payerPhone: "{{borrowerPhone}}"
+  loanId: "{{loanId}}"
+  amount: "1500"
+  mpesaCode: MPESA123
+scripts:
+  - type: afterResponse
+    code: |-
+      var jsonData = pm.response.json();
+      if (jsonData.id) pm.environment.set('transactionId', jsonData.id);
+      pm.test('Loan payment recorded successfully', function () { pm.expect(jsonData.id).to.be.a('number'); });
+    language: text/javascript
+order: 2000

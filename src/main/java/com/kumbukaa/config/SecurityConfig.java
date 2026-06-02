@@ -35,9 +35,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authz -> authz
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/debug/**").permitAll()
-                        .requestMatchers("/", "/index.html", "/test.html", "/css/**", "/js/**", "/favicon.ico", "/health", "/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/api/auth/**", "/kumbukaa/api/auth/**").permitAll()
+                        .requestMatchers("/api/debug/**", "/kumbukaa/api/debug/**").permitAll()
+                        .requestMatchers("/", "/kumbukaa/", "/index.html", "/kumbukaa/index.html", "/test.html", "/kumbukaa/test.html", "/css/**", "/kumbukaa/css/**", "/js/**", "/kumbukaa/js/**", "/favicon.ico", "/kumbukaa/favicon.ico", "/health", "/kumbukaa/health", "/actuator/health", "/kumbukaa/actuator/health", "/actuator/info", "/kumbukaa/actuator/info").permitAll()
                         .anyRequest().authenticated()
                 )
                 .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()))

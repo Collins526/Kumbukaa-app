@@ -3,10 +3,13 @@ description: Postman collection for the Kumbukaa backend API. Set {{baseUrl}} to
 variables:
   baseUrl: http://localhost:8080/kumbukaa
   token: ""
+  bearerToken: ""
   refreshToken: ""
   authId: ""
   userId: ""
   lenderUserId: ""
   borrowerUserId: ""
   loanId: ""
+  borrowerPhone: "0712345678"
+  lenderPhone: "0798765432"
   transactionId: ""

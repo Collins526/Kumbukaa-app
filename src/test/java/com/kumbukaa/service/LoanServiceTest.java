@@ -18,7 +18,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
-@SuppressWarnings({"null","unchecked"})
+@SuppressWarnings("null")
 class LoanServiceTest {
 
     @Mock
@@ -85,6 +85,31 @@ class LoanServiceTest {
         assertEquals(borrower, createdLoan.getBorrower());
 
         // Verify notification was sent to lender
+        verify(notificationService, times(1)).sendNotification(
+                eq(lender),
+                anyString()
+        );
+    }
+
+    @Test
+    void testRequestLoanByPhone_Success() {
+        // Arrange
+        when(userRepository.findByPhoneNumber("0700000001")).thenReturn(Optional.of(lender));
+        when(userRepository.findByPhoneNumber("0700000002")).thenReturn(Optional.of(borrower));
+        when(loanRepository.save(any(Loan.class))).thenAnswer(invocation -> invocation.getArgument(0, Loan.class));
+
+        // Act
+        Loan requestedLoan = loanService.requestLoan("0700000002", "0700000001", 7000.0, java.time.LocalDate.of(2026, 6, 30));
+
+        // Assert
+        assertNotNull(requestedLoan);
+        assertEquals(LoanStatus.PENDING, requestedLoan.getStatus());
+        assertEquals(7000.0, requestedLoan.getAmount());
+        assertEquals(7000.0, requestedLoan.getBalance());
+        assertEquals(lender, requestedLoan.getLender());
+        assertEquals(borrower, requestedLoan.getBorrower());
+        assertEquals(java.time.LocalDate.of(2026, 6, 30), requestedLoan.getDueDate());
+
         verify(notificationService, times(1)).sendNotification(
                 eq(lender),
                 anyString()

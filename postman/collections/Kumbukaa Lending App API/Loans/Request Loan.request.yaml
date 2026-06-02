@@ -1,0 +1,30 @@
+$kind: http-request
+url: "{{baseUrl}}/api/loans/request"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{bearerToken}}
+body:
+  type: text
+  content: |-
+    {
+      "borrowerPhone": "{{borrowerPhone}}",
+      "lenderPhone": "{{lenderPhone}}",
+      "amount": 7000,
+      "dueDate": "2026-06-30"
+    }
+scripts:
+  - type: beforeRequest
+    code: |-
+      if (!pm.environment.get('bearerToken')) {
+        pm.test('Bearer token is required', function () { pm.expect(pm.environment.get('bearerToken')).to.be.a('string'); });
+        throw new Error('Missing borrower bearer token. Run Login first.');
+      }
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      var jsonData = pm.response.json();
+      if (jsonData.id) pm.environment.set('loanId', jsonData.id);
+      pm.test('Loan request submitted successfully', function () { pm.expect(jsonData.id).to.be.a('number'); });
+    language: text/javascript
+order: 4000

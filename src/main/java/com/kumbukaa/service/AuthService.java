@@ -290,31 +290,34 @@ public class AuthService {
     }
 
     private void sendEmailWithResend(String email, String subject, String body) throws Exception {
+        if (resendApiKey == null || resendApiKey.isBlank()) {
+            throw new IllegalStateException("Resend API key is not configured");
+        }
+        
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(resendApiKey);
+
+        String apiKey = Objects.requireNonNull(resendApiKey, "resendApiKey is required");
+        String fromEmail = Objects.requireNonNull(resendFromEmail, "resendFromEmail is required");
 
         Map<String, Object> payload = new HashMap<>();
-        payload.put("from", resendFromEmail);
+        payload.put("from", fromEmail);
         payload.put("to", email);
         payload.put("subject", subject);
         payload.put("text", body);
 
         ObjectMapper mapper = new ObjectMapper();
         String json = mapper.writeValueAsString(payload);
-
-        // defensive null-checks to satisfy null-safety analysis
-        String apiKey = Objects.requireNonNull(resendApiKey, "resendApiKey is required");
-        String fromEmail = Objects.requireNonNull(resendFromEmail, "resendFromEmail is required");
         String payloadJson = Objects.requireNonNull(json, "payload json must not be null");
 
         headers.setBearerAuth(apiKey);
 
         HttpEntity<String> request = new HttpEntity<>(payloadJson, headers);
+        HttpMethod method = Objects.requireNonNull(HttpMethod.POST);
         ResponseEntity<String> response = restTemplate.exchange(
             "https://api.resend.com/emails",
-            HttpMethod.POST,
+            method,
             request,
             String.class
         );

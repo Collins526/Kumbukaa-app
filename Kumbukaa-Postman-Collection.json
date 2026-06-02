@@ -14,6 +14,10 @@
       "value": ""
     },
     {
+      "key": "bearerToken",
+      "value": ""
+    },
+    {
       "key": "refreshToken",
       "value": ""
     },
@@ -36,6 +40,14 @@
     {
       "key": "loanId",
       "value": ""
+    },
+    {
+      "key": "borrowerPhone",
+      "value": "0712345678"
+    },
+    {
+      "key": "lenderPhone",
+      "value": "0798765432"
     },
     {
       "key": "transactionId",
@@ -96,6 +108,7 @@
                 "exec": [
                   "var jsonData = pm.response.json();",
                   "if (jsonData.token) pm.environment.set('token', jsonData.token);",
+                  "if (jsonData.token) pm.environment.set('bearerToken', jsonData.token);",
                   "if (jsonData.refreshToken) pm.environment.set('refreshToken', jsonData.refreshToken);",
                   "if (jsonData.id) pm.environment.set('authId', jsonData.id);",
                   "if (jsonData.userId) pm.environment.set('userId', jsonData.userId);",
@@ -365,6 +378,70 @@
               ]
             }
           },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.id) pm.environment.set('loanId', jsonData.id);",
+                  "pm.test('Loan created successfully', function () { pm.expect(jsonData.id).to.be.a('number'); });"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Request Loan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{bearerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/request",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","loans","request"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"borrowerPhone\": \"{{borrowerPhone}}\",\n  \"lenderPhone\": \"{{lenderPhone}}\",\n  \"amount\": 7000,\n  \"dueDate\": \"2026-06-30\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('bearerToken')) {",
+                  "  pm.test('Bearer token is required', function () { pm.expect(pm.environment.get('bearerToken')).to.be.a('string'); });",
+                  "  throw new Error('Missing borrower bearer token. Run Login first.');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.id) pm.environment.set('loanId', jsonData.id);",
+                  "pm.test('Loan request submitted successfully', function () { pm.expect(jsonData.id).to.be.a('number'); });"
+                ]
+              }
+            }
+          ],
           "response": []
         },
         {
@@ -412,7 +489,7 @@
       "name": "Transactions",
       "item": [
         {
-          "name": "Log Payment",
+          "name": "Pay Loan",
           "request": {
             "method": "POST",
             "header": [
@@ -432,6 +509,56 @@
               ]
             }
           },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.id) pm.environment.set('transactionId', jsonData.id);",
+                  "pm.test('Loan payment recorded successfully', function () { pm.expect(jsonData.id).to.be.a('number'); });"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Pay Loan By Phone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transactions/pay-by-phone?payerPhone={{borrowerPhone}}&loanId={{loanId}}&amount=1500&mpesaCode=MPESA123",
+              "host": ["{{baseUrl}}"],
+              "path": ["api","transactions","pay-by-phone"],
+              "query": [
+                { "key": "payerPhone", "value": "{{borrowerPhone}}" },
+                { "key": "loanId", "value": "{{loanId}}" },
+                { "key": "amount", "value": "1500" },
+                { "key": "mpesaCode", "value": "MPESA123" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.id) pm.environment.set('transactionId', jsonData.id);",
+                  "pm.test('Loan payment recorded successfully', function () { pm.expect(jsonData.id).to.be.a('number'); });"
+                ]
+              }
+            }
+          ],
           "response": []
         },
         {

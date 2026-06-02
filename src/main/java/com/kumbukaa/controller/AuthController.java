@@ -29,7 +29,8 @@ public class AuthController {
             AuthResponse response = authService.register(request);
             return new ResponseEntity<>(response, HttpStatus.CREATED);
         } catch (Exception e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+            AuthResponse error = new AuthResponse(null, null, null, null, null, null, false, e.getMessage());
+            return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -39,7 +40,8 @@ public class AuthController {
             AuthResponse response = authService.login(request);
             return new ResponseEntity<>(response, HttpStatus.OK);
         } catch (Exception e) {
-            return new ResponseEntity<>(new AuthResponse(null, null, null, null, null, null, false, e.getMessage()), HttpStatus.UNAUTHORIZED);
+            AuthResponse error = new AuthResponse(null, null, null, null, null, null, false, e.getMessage());
+            return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
         }
     }
 
@@ -47,9 +49,11 @@ public class AuthController {
     public ResponseEntity<?> requestOtp(@RequestBody OtpRequest request) {
         try {
             String message = authService.requestOtp(request.getEmail());
-            return new ResponseEntity<>(message, HttpStatus.OK);
+            AuthResponse response = new AuthResponse(null, null, request.getEmail(), null, null, null, false, message);
+            return new ResponseEntity<>(response, HttpStatus.OK);
         } catch (Exception e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+            AuthResponse error = new AuthResponse(null, null, null, null, null, null, false, e.getMessage());
+            return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -67,9 +71,11 @@ public class AuthController {
     public ResponseEntity<?> logout(@PathVariable Long authId) {
         try {
             authService.logout(authId);
-            return new ResponseEntity<>("Logout successful", HttpStatus.OK);
+            AuthResponse response = new AuthResponse(null, null, null, null, null, null, true, "Logout successful");
+            return new ResponseEntity<>(response, HttpStatus.OK);
         } catch (Exception e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+            AuthResponse error = new AuthResponse(null, null, null, null, null, null, false, e.getMessage());
+            return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -77,7 +83,8 @@ public class AuthController {
     public ResponseEntity<?> validateToken(@RequestHeader(value = "Authorization", required = false) String token) {
         try {
             if (token == null || !token.startsWith("Bearer ")) {
-                return new ResponseEntity<>("Invalid token format", HttpStatus.BAD_REQUEST);
+                AuthResponse error = new AuthResponse(null, null, null, null, null, null, false, "Invalid token format");
+                return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
             }
             String jwtToken = token.substring(7);
             boolean isValid = authService.validateToken(jwtToken);
@@ -86,9 +93,11 @@ public class AuthController {
                 Long userId = authService.getUserIdFromToken(jwtToken);
                 return new ResponseEntity<>(new AuthResponse(null, userId, email, null, null, null, true, "Token is valid"), HttpStatus.OK);
             }
-            return new ResponseEntity<>("Token is invalid or expired", HttpStatus.UNAUTHORIZED);
+            AuthResponse error = new AuthResponse(null, null, null, null, null, null, false, "Token is invalid or expired");
+            return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
         } catch (Exception e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.UNAUTHORIZED);
+            AuthResponse error = new AuthResponse(null, null, null, null, null, null, false, e.getMessage());
+            return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
         }
     }
 
