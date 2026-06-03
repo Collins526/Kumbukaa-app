@@ -80,6 +80,7 @@ public class UserService {
         }
 
         // Save updated user
+        @SuppressWarnings("null")
         User savedUser = userRepository.save(user);
         User updatedUser = Objects.requireNonNull(savedUser, "Failed to save user");
 

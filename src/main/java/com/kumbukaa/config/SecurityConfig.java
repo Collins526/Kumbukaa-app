@@ -37,7 +37,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**", "/kumbukaa/api/auth/**").permitAll()
                         .requestMatchers("/api/debug/**", "/kumbukaa/api/debug/**").permitAll()
-                        .requestMatchers("/", "/kumbukaa/", "/index.html", "/kumbukaa/index.html", "/test.html", "/kumbukaa/test.html", "/css/**", "/kumbukaa/css/**", "/js/**", "/kumbukaa/js/**", "/favicon.ico", "/kumbukaa/favicon.ico", "/health", "/kumbukaa/health", "/actuator/health", "/kumbukaa/actuator/health", "/actuator/info", "/kumbukaa/actuator/info").permitAll()
+                        .requestMatchers("/", "/kumbukaa/", "/index.html", "/kumbukaa/index.html", "/test.html", "/kumbukaa/test.html", "/css/**", "/kumbukaa/css/**", "/js/**", "/kumbukaa/js/**", "/favicon.ico", "/kumbukaa/favicon.ico", "/health", "/kumbukaa/health", "/actuator/health", "/kumbukaa/actuator/health", "/actuator/info", "/kumbukaa/actuator/info", "/error", "/kumbukaa/error").permitAll()
                         .anyRequest().authenticated()
                 )
                 .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()))
