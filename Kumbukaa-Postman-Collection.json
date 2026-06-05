@@ -2,12 +2,12 @@
   "info": {
     "name": "Kumbukaa Lending App API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Postman collection for the Kumbukaa backend API. Set {{baseUrl}} to http://localhost:8080/kumbukaa for local testing. Users can borrow from and lend to other users without needing to select a role."
+    "description": "Postman collection for the Kumbukaa backend API. Set {{baseUrl}} to http://localhost:8080 for local testing. Users can borrow from and lend to other users without needing to select a role."
   },
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:8080/kumbukaa"
+      "value": "http://localhost:8080"
     },
     {
       "key": "token",
@@ -358,42 +358,6 @@
           "response": []
         },
         {
-          "name": "Create Loan",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/loans?lenderId={{lenderUserId}}&borrowerId={{borrowerUserId}}&amount=5000",
-              "host": ["{{baseUrl}}"],
-              "path": ["api","loans"],
-              "query": [
-                { "key": "lenderId", "value": "{{lenderUserId}}" },
-                { "key": "borrowerId", "value": "{{borrowerUserId}}" },
-                { "key": "amount", "value": "5000" }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "var jsonData = pm.response.json();",
-                  "if (jsonData.id) pm.environment.set('loanId', jsonData.id);",
-                  "pm.test('Loan created successfully', function () { pm.expect(jsonData.id).to.be.a('number'); });"
-                ]
-              }
-            }
-          ],
-          "response": []
-        },
-        {
           "name": "Request Loan",
           "request": {
             "auth": {
@@ -501,19 +465,22 @@
             "method": "POST",
             "header": [
               {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{token}}"
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/transactions?loanId={{loanId}}&amount=1500&mpesaCode=MPESA123",
+              "raw": "{{baseUrl}}/api/transactions",
               "host": ["{{baseUrl}}"],
-              "path": ["api","transactions"],
-              "query": [
-                { "key": "loanId", "value": "{{loanId}}" },
-                { "key": "amount", "value": "1500" },
-                { "key": "mpesaCode", "value": "MPESA123" }
-              ]
+              "path": ["api","transactions"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loanId\": {{loanId}},\n  \"amount\": 1500.0,\n  \"mpesaCode\": \"MPESA123\"\n}"
             }
           },
           "event": [
@@ -537,20 +504,22 @@
             "method": "POST",
             "header": [
               {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{token}}"
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/transactions/pay-by-phone?payerPhone={{borrowerPhone}}&loanId={{loanId}}&amount=1500&mpesaCode=MPESA123",
+              "raw": "{{baseUrl}}/api/transactions/pay-by-phone",
               "host": ["{{baseUrl}}"],
-              "path": ["api","transactions","pay-by-phone"],
-              "query": [
-                { "key": "payerPhone", "value": "{{borrowerPhone}}" },
-                { "key": "loanId", "value": "{{loanId}}" },
-                { "key": "amount", "value": "1500" },
-                { "key": "mpesaCode", "value": "MPESA123" }
-              ]
+              "path": ["api","transactions","pay-by-phone"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payerPhone\": \"{{borrowerPhone}}\",\n  \"loanId\": {{loanId}},\n  \"amount\": 1500.0,\n  \"mpesaCode\": \"MPESA123\"\n}"
             }
           },
           "event": [

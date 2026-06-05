@@ -1,5 +1,6 @@
 package com.kumbukaa.controller;
 
+import com.kumbukaa.dto.TransactionRequestDto;
 import com.kumbukaa.entity.Transaction;
 import com.kumbukaa.service.TransactionService;
 import org.springframework.http.HttpStatus;
@@ -19,23 +20,25 @@ public class TransactionController {
     }
 
     @PostMapping
-    public ResponseEntity<Transaction> logPayment(
-            @RequestParam Long loanId,
-            @RequestParam Double amount,
-            @RequestParam String mpesaCode) {
-
-        return new ResponseEntity<>(service.logPayment(loanId, amount, mpesaCode), HttpStatus.CREATED);
+    public ResponseEntity<?> logPayment(@RequestBody TransactionRequestDto request) {
+        try {
+            return new ResponseEntity<>(service.logPayment(request.getLoanId(), request.getAmount(), request.getMpesaCode()), HttpStatus.CREATED);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (Exception e) {
+            return new ResponseEntity<>("Unable to log payment: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     @PostMapping("/pay-by-phone")
-    public ResponseEntity<Transaction> payByPhone(
-            @RequestParam String payerPhone,
-            @RequestParam Long loanId,
-            @RequestParam Double amount,
-            @RequestParam String mpesaCode) {
-
-        // Payer phone is accepted for client-side identification; service.logPayment performs loan/payment validations.
-        return new ResponseEntity<>(service.logPayment(loanId, amount, mpesaCode), HttpStatus.CREATED);
+    public ResponseEntity<?> payByPhone(@RequestBody TransactionRequestDto request) {
+        try {
+            return new ResponseEntity<>(service.payByPhone(request.getLoanId(), request.getAmount(), request.getMpesaCode()), HttpStatus.CREATED);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (Exception e) {
+            return new ResponseEntity<>("Unable to process phone payment: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     @PostMapping("/{loanId}/mark-sent")

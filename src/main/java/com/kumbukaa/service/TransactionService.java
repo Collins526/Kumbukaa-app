@@ -7,12 +7,14 @@ import com.kumbukaa.enums.TransactionStatus;
 import com.kumbukaa.repository.LoanRepository;
 import com.kumbukaa.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 @Service
+@Transactional
 public class TransactionService {
 
     private final TransactionRepository txRepo;
@@ -29,7 +31,8 @@ public class TransactionService {
         if (loanId == null) {
             throw new IllegalArgumentException("Loan ID must not be null");
         }
-        Loan loan = loanRepo.findById(loanId).orElseThrow();
+        Loan loan = loanRepo.findById(loanId)
+                .orElseThrow(() -> new IllegalArgumentException("Loan not found for id: " + loanId));
         if (loan.getStatus() != LoanStatus.ACTIVE) {
             throw new IllegalStateException("Money can only be marked as sent for active loans");
         }
@@ -56,28 +59,50 @@ public class TransactionService {
         if (amount == null || amount <= 0) {
             throw new IllegalArgumentException("Payment amount must be greater than zero");
         }
-        Loan loan = loanRepo.findById(loanId).orElseThrow();
+        Loan loan = loanRepo.findById(loanId)
+                .orElseThrow(() -> new IllegalArgumentException("Loan not found for id: " + loanId));
         if (loan.getStatus() != LoanStatus.ACTIVE) {
             throw new IllegalStateException("Payments can only be logged for active loans");
         }
 
         // Find the main transaction for this loan
         List<Transaction> transactions = txRepo.findByLoanId(loanId);
+        Transaction tx;
         if (transactions.isEmpty()) {
-            throw new IllegalStateException("No transaction found for this loan. Lender must send money first.");
-        }
-
-        Transaction tx = transactions.get(0);
-        if (tx.getStatus() != TransactionStatus.UNPAID) {
-            throw new IllegalStateException("Payments can only be logged for unpaid transactions");
+            tx = new Transaction();
+            tx.setLoan(loan);
+            tx.setAmount(amount);
+            tx.setStatus(TransactionStatus.UNPAID);
+            tx.setCreatedAt(LocalDateTime.now());
+        } else {
+            tx = transactions.get(0);
+            if (tx.getStatus() != null && tx.getStatus() != TransactionStatus.UNPAID) {
+                throw new IllegalStateException("Payments can only be logged for unpaid transactions");
+            }
+            if (tx.getStatus() == null) {
+                tx.setStatus(TransactionStatus.UNPAID);
+            }
+            tx.setAmount((tx.getAmount() != null ? tx.getAmount() : 0.0) + amount);
         }
 
         tx.setMpesaTransactionId(mpesaCode);
-        // Store the payment amount separately or update based on approval
+        loan.setBalance(Math.max(0.0, loan.getBalance() - amount));
+        loanRepo.save(loan);
         Transaction savedTx = txRepo.save(tx);
         notificationService.sendNotification(loan.getLender(),
                 String.format("Borrower submitted payment of Ksh %.2f (M-Pesa: %s) for loan %d. Please verify.", amount, mpesaCode, loan.getId()));
-        return savedTx;
+        return txRepo.findById(savedTx.getId()).orElse(savedTx);
+    }
+
+    public Transaction payByPhone(Long loanId, Double amount, String mpesaCode) {
+        Loan loan = loanRepo.findById(loanId)
+                .orElseThrow(() -> new IllegalArgumentException("Loan not found for id: " + loanId));
+        Double originalBalance = loan.getBalance();
+        Transaction tx = logPayment(loanId, amount, mpesaCode);
+        if (originalBalance != null && amount != null && amount >= originalBalance) {
+            return approvePayment(tx.getId(), amount);
+        }
+        return tx;
     }
 
     public Transaction approvePayment(Long txId, Double paymentAmount) {
@@ -87,7 +112,8 @@ public class TransactionService {
         if (paymentAmount == null || paymentAmount <= 0) {
             throw new IllegalArgumentException("Payment amount must be greater than zero");
         }
-        Transaction tx = txRepo.findById(txId).orElseThrow();
+        Transaction tx = txRepo.findById(txId)
+                .orElseThrow(() -> new IllegalArgumentException("Transaction not found for id: " + txId));
         if (tx.getStatus() != TransactionStatus.UNPAID) {
             throw new IllegalStateException("Only unpaid transactions can receive payments");
         }
@@ -97,22 +123,21 @@ public class TransactionService {
             throw new IllegalStateException("Only active loans can receive payments");
         }
 
-        loan.setBalance(Math.max(0.0, loan.getBalance() - paymentAmount));
-
         if (loan.getBalance() <= 0) {
             loan.setStatus(LoanStatus.SETTLED);
             tx.setStatus(TransactionStatus.PAID);
             notificationService.sendNotification(loan.getBorrower(),
                     String.format("Your loan of Ksh %.2f has been fully paid. Thank you!", tx.getAmount()));
         } else {
-            // Still unpaid but amount reduced
+            tx.setStatus(TransactionStatus.PAID);
             notificationService.sendNotification(loan.getBorrower(),
                     String.format("Payment of Ksh %.2f approved. Remaining balance: Ksh %.2f.",
                             paymentAmount, loan.getBalance()));
         }
 
         loanRepo.save(loan);
-        return txRepo.save(tx);
+        Transaction savedTx = txRepo.save(tx);
+        return txRepo.findById(savedTx.getId()).orElse(savedTx);
     }
 
     public Optional<Transaction> findById(Long id) {

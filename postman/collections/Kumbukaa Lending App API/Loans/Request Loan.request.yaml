@@ -26,4 +26,4 @@ scripts:
       if (jsonData.id) pm.environment.set('loanId', jsonData.id);
       pm.test('Loan request submitted successfully', function () { pm.expect(jsonData.id).to.be.a('number'); });
     language: text/javascript
-order: 4000
+order: 3000

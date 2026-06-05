@@ -2,7 +2,7 @@ alert('JS LOADED');
 const app = {
     token: localStorage.getItem('kumbuka_token'),
     user: null,
-    baseUrl: '/kumbukaa/api',
+    baseUrl: '/api',
 
     init() {
         try {

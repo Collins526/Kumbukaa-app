@@ -1,13 +1,18 @@
 $kind: http-request
-url: "{{baseUrl}}/api/transactions/pay-by-phone?payerPhone={{borrowerPhone}}&loanId={{loanId}}&amount=1500&mpesaCode=MPESA123"
+url: "{{baseUrl}}/api/transactions/pay-by-phone"
 method: POST
 headers:
+  Content-Type: application/json
   Authorization: Bearer {{token}}
-queryParams:
-  payerPhone: "{{borrowerPhone}}"
-  loanId: "{{loanId}}"
-  amount: "1500"
-  mpesaCode: MPESA123
+body:
+  type: text
+  content: |-
+    {
+      "payerPhone": "{{borrowerPhone}}",
+      "loanId": {{loanId}},
+      "amount": 1500.0,
+      "mpesaCode": "MPESA123"
+    }
 scripts:
   - type: afterResponse
     code: |-
