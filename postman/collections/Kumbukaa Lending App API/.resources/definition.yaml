@@ -1,7 +1,7 @@
 $kind: collection
-description: Postman collection for the Kumbukaa backend API. Set {{baseUrl}} to http://localhost:8080/kumbukaa for local testing. Users can borrow from and lend to other users without needing to select a role.
+description: Postman collection for the Kumbukaa backend API. Set {{baseUrl}} to http://localhost:8080 for local testing. Users can borrow from and lend to other users without needing to select a role.
 variables:
-  baseUrl: http://localhost:8080/kumbukaa
+  baseUrl: http://localhost:8080
   token: ""
   bearerToken: ""
   refreshToken: ""

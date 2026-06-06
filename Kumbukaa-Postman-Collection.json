@@ -543,6 +543,10 @@
             "method": "POST",
             "header": [
               {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{token}}"
               }
@@ -551,6 +555,10 @@
               "raw": "{{baseUrl}}/api/transactions/{{transactionId}}/approve",
               "host": ["{{baseUrl}}"],
               "path": ["api","transactions","{{transactionId}}","approve"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentAmount\": 1500.0\n}"
             }
           },
           "response": []

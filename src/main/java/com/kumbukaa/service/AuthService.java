@@ -1,471 +1,202 @@
 package com.kumbukaa.service;
 
-import com.kumbukaa.config.JwtTokenProvider;
 import com.kumbukaa.dto.AuthResponse;
-import com.kumbukaa.dto.BorrowerDTO;
 import com.kumbukaa.dto.LoginRequest;
+import com.kumbukaa.dto.LoginWithOtpRequest;
+import com.kumbukaa.dto.OtpRequest;
 import com.kumbukaa.dto.RegisterRequest;
-import com.kumbukaa.entity.Auth;
-import com.kumbukaa.entity.Lender;
+import com.kumbukaa.entity.OtpCode;
 import com.kumbukaa.entity.User;
- 
-import com.kumbukaa.repository.AuthRepository;
+import com.kumbukaa.repository.OtpCodeRepository;
 import com.kumbukaa.repository.UserRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
-import java.security.SecureRandom;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
-import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.Objects;
-import java.util.List;
-import java.util.Map;
+import java.util.Base64;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Pattern;
+import java.util.Random;
 
 @Service
+@Transactional
 public class AuthService {
 
-    @Autowired
-    private AuthRepository authRepository;
+    private final UserRepository userRepository;
+    private final OtpCodeRepository otpCodeRepository;
+    private final EmailService emailService;
+    private final Random random;
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private BorrowerService borrowerService;
-
-    @Autowired
-    private LenderService lenderService;
-
-    @Autowired
-    private JwtTokenProvider jwtTokenProvider;
-
-    @Autowired(required = false)
-    private JavaMailSender mailSender;
-
-    @Value("${spring.mail.username}")
-    private String mailFrom;
-
-    @Value("${app.resend.api-key:}")
-    private String resendApiKey;
-
-    @Value("${app.resend.from-email:noreply@kumbukaa.com}")
-    private String resendFromEmail;
-
-    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-    private final SecureRandom secureRandom = new SecureRandom();
-    private final Map<String, OtpDetails> otpStore = new ConcurrentHashMap<>();
-
-    private boolean isValidEmail(String email) {
-        return email != null && EMAIL_PATTERN.matcher(email.trim()).matches();
+    public AuthService(UserRepository userRepository, OtpCodeRepository otpCodeRepository, EmailService emailService) {
+        this.userRepository = userRepository;
+        this.otpCodeRepository = otpCodeRepository;
+        this.emailService = emailService;
+        this.random = new Random();
     }
 
-    public AuthResponse register(RegisterRequest request) throws Exception {
-        String email = request.getEmail() == null ? null : request.getEmail().trim();
-        if (email == null || email.isEmpty()) {
-            throw new Exception("Email is required");
+    @SuppressWarnings("null")
+    public AuthResponse register(RegisterRequest request) {
+        validateRegisterRequest(request);
+
+        String email = request.getEmail().trim().toLowerCase();
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new IllegalArgumentException("Email is already registered");
         }
-        if (!isValidEmail(email)) {
-            throw new Exception("Invalid email");
+
+        User user = User.builder()
+                .fullName(request.getName().trim())
+                .email(email)
+                .phoneNumber(request.getPhoneNumber().trim())
+                .passwordHash(hashPassword(request.getPassword()))
+                .build();
+
+        User savedUser = userRepository.save(user);
+        return new AuthResponse(
+                savedUser.getId(),
+                savedUser.getEmail(),
+                savedUser.getFullName(),
+                "Registration successful",
+                createToken(savedUser),
+                createRefreshToken(savedUser)
+        );
+    }
+
+    public AuthResponse login(LoginRequest request) {
+        validateLoginRequest(request);
+
+        String email = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
+
+        if (!hashPassword(request.getPassword()).equals(user.getPasswordHash())) {
+            throw new IllegalArgumentException("Invalid email or password");
         }
-        if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
-            throw new Exception("Password is required");
+
+        return new AuthResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getFullName(),
+                "Login successful",
+                createToken(user),
+                createRefreshToken(user)
+        );
+    }
+
+    @SuppressWarnings("null")
+    public String requestOtp(OtpRequest request) {
+        String email = validateEmail(request.getEmail());
+
+        userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Email is not registered"));
+
+        String code = String.format("%06d", random.nextInt(1_000_000));
+        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(10);
+
+        OtpCode otpCode = OtpCode.builder()
+                .email(email)
+                .code(code)
+                .expiresAt(expiresAt)
+                .used(false)
+                .build();
+
+        otpCodeRepository.save(otpCode);
+        emailService.sendOtpEmail(email, code);
+        return "OTP has been sent to the email.";
+    }
+
+    public AuthResponse loginWithOtp(LoginWithOtpRequest request) {
+        String email = validateEmail(request.getEmail());
+        String code = validateCode(request.getCode());
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Email is not registered"));
+
+        Optional<OtpCode> existingOtp = otpCodeRepository.findFirstByEmailAndCodeAndUsedFalseOrderByCreatedAtDesc(email, code);
+        if (existingOtp.isEmpty()) {
+            throw new IllegalArgumentException("Invalid OTP code");
+        }
+
+        OtpCode otpCode = existingOtp.get();
+        if (otpCode.getExpiresAt() == null || otpCode.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new IllegalStateException("OTP code has expired");
+        }
+
+        otpCode.setUsed(true);
+        otpCodeRepository.save(otpCode);
+
+        return new AuthResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getFullName(),
+                "Login with OTP successful",
+                createToken(user),
+                createRefreshToken(user)
+        );
+    }
+
+    private void validateRegisterRequest(RegisterRequest request) {
+        if (request == null
+                || request.getName() == null || request.getName().isBlank()
+                || request.getEmail() == null || request.getEmail().isBlank()
+                || request.getPhoneNumber() == null || request.getPhoneNumber().isBlank()
+                || request.getPassword() == null || request.getPassword().isBlank()
+                || request.getConfirmPassword() == null || request.getConfirmPassword().isBlank()) {
+            throw new IllegalArgumentException("Name, email, phone number, password, and password confirmation are required");
         }
         if (!request.getPassword().equals(request.getConfirmPassword())) {
-            throw new Exception("Passwords do not match");
+            throw new IllegalArgumentException("Password and confirm password must match");
         }
-
-        if (authRepository.findByEmail(email).isPresent()) {
-            throw new Exception("Email already exists");
-        }
-
-        String phoneNumber = request.getPhoneNumber() == null ? null : request.getPhoneNumber().trim();
-        if (phoneNumber == null || phoneNumber.isEmpty()) {
-            throw new Exception("Phone number is required");
-        }
-        if (userRepository.existsByPhoneNumber(phoneNumber)) {
-            throw new Exception("Phone number already exists");
-        }
-
-        User newUser = new User();
-        newUser.setName(request.getName());
-        newUser.setEmail(email);
-        newUser.setPhoneNumber(phoneNumber);
-        newUser.setPassword(passwordEncoder.encode(request.getPassword()));
-        User savedUser = userRepository.save(newUser);
-
-        Auth auth = new Auth();
-        auth.setUser(savedUser);
-        auth.setPassword(passwordEncoder.encode(request.getPassword()));
-        auth.setEmail(email);
-        auth.setUsername(email); // Set username to email
-        auth.setIsVerified(true);
-        auth.setIsActive(true);
-        authRepository.save(auth);
-
-        ensureBorrowerRecord(savedUser);
-        ensureLenderRecord(savedUser);
-
-        String token = jwtTokenProvider.generateToken(email, savedUser.getId());
-        String refreshToken = jwtTokenProvider.generateRefreshToken(email, savedUser.getId());
-        auth.setToken(token);
-        auth.setRefreshToken(refreshToken);
-        authRepository.save(auth);
-
-        AuthResponse response = new AuthResponse();
-        response.setId(auth.getId());
-        response.setUserId(savedUser.getId());
-        response.setEmail(email);
-        response.setToken(token);
-        response.setRefreshToken(refreshToken);
-        response.setTokenExpiration(jwtTokenProvider.getTokenExpiration(token));
-        response.setIsVerified(auth.getIsVerified());
-        response.setMessage("User registered successfully");
-
-        return response;
     }
 
-    private void ensureBorrowerRecord(User savedUser) {
-        if (borrowerService.findByUserId(savedUser.getId()).isPresent()) {
-            return;
+    private void validateLoginRequest(LoginRequest request) {
+        if (request == null
+                || request.getEmail() == null || request.getEmail().isBlank()
+                || request.getPassword() == null || request.getPassword().isBlank()) {
+            throw new IllegalArgumentException("Email and password are required");
         }
-
-        BorrowerDTO borrowerDTO = new BorrowerDTO();
-        borrowerDTO.setUserId(savedUser.getId());
-        borrowerDTO.setCreditScore(600);
-        borrowerDTO.setIdNumber("ID-" + savedUser.getId());
-        borrowerDTO.setEmploymentStatus("EMPLOYED");
-        borrowerDTO.setAnnualIncome(0.0);
-        borrowerDTO.setDateOfBirth(LocalDate.of(1990, 1, 1));
-        borrowerDTO.setAddress("Unknown");
-        borrowerDTO.setCity("Unknown");
-        borrowerDTO.setPostalCode("00000");
-        borrowerDTO.setIsVerified(false);
-        borrowerDTO.setTotalBorrowed(0.0);
-        borrowerDTO.setTotalRepaid(0.0);
-        borrowerService.createBorrower(borrowerDTO);
     }
 
-    private void ensureLenderRecord(User savedUser) {
-        if (lenderService.findByUserId(savedUser.getId()).isPresent()) {
-            return;
+    private String validateEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Email is required");
         }
-
-        Lender lender = new Lender();
-        lender.setUser(savedUser);
-        lender.setLenderName(savedUser.getName());
-        lender.setAvailableCapital(0.0);
-        lender.setInterestRate(5.0);
-        lender.setDateOfBirth(LocalDate.of(1990, 1, 1));
-        lender.setAddress("Unknown");
-        lender.setCity("Unknown");
-        lender.setPostalCode("00000");
-        lender.setIsVerified(true);
-        lender.setTotalLent(0.0);
-        lender.setTotalRecovered(0.0);
-        lenderService.createLender(lender);
+        return email.trim().toLowerCase();
     }
 
-    public AuthResponse login(LoginRequest request) throws Exception {
-        String email = request.getEmail() == null ? null : request.getEmail().trim();
-        if (email == null || email.isEmpty()) {
-            throw new Exception("Email is required");
+    private String validateCode(String code) {
+        if (code == null || code.isBlank()) {
+            throw new IllegalArgumentException("OTP code is required");
         }
-        if (!isValidEmail(email)) {
-            throw new Exception("Invalid email");
-        }
-
-        Optional<Auth> authOptional = authRepository.findByEmail(email);
-        if (authOptional.isEmpty()) {
-            throw new Exception("Email does not exist");
-        }
-
-        Auth auth = authOptional.get();
-
-        if (!auth.getIsActive()) {
-            throw new Exception("Account is inactive");
-        }
-
-        boolean authenticated = false;
-        if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
-            authenticated = passwordEncoder.matches(request.getPassword(), auth.getPassword());
-        } else if (request.getOtp() != null && !request.getOtp().trim().isEmpty()) {
-            authenticated = validateOtp(request.getEmail().trim(), request.getOtp().trim());
-        } else {
-            throw new Exception("Password or OTP is required");
-        }
-
-        if (!authenticated) {
-            throw new Exception("Invalid credentials");
-        }
-
-        String token = jwtTokenProvider.generateToken(auth.getEmail(), auth.getUser().getId());
-        String refreshToken = jwtTokenProvider.generateRefreshToken(auth.getEmail(), auth.getUser().getId());
-
-        auth.setToken(token);
-        auth.setRefreshToken(refreshToken);
-        auth.setLastLogin(LocalDateTime.now());
-        Auth updatedAuth = authRepository.save(auth);
-
-        AuthResponse response = new AuthResponse();
-        response.setId(updatedAuth.getId());
-        response.setUserId(updatedAuth.getUser().getId());
-        response.setEmail(updatedAuth.getEmail());
-        response.setToken(token);
-        response.setRefreshToken(refreshToken);
-        response.setTokenExpiration(jwtTokenProvider.getTokenExpiration(token));
-        response.setIsVerified(updatedAuth.getIsVerified());
-        response.setMessage("Login successful");
-
-        return response;
+        return code.trim();
     }
 
-    public String requestOtp(String email) throws Exception {
-        String normalizedEmail = email == null ? null : email.trim();
-        if (normalizedEmail == null || normalizedEmail.isEmpty()) {
-            throw new Exception("Email is required");
-        }
-        if (!isValidEmail(normalizedEmail)) {
-            throw new Exception("Invalid email");
-        }
-
-        Optional<Auth> authOptional = authRepository.findByEmail(normalizedEmail);
-        if (authOptional.isEmpty()) {
-            throw new Exception("Email does not exist");
-        }
-
-        String otp = String.format("%06d", secureRandom.nextInt(1_000_000));
-        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(10);
-        otpStore.put(normalizedEmail.toLowerCase(), new OtpDetails(otp, expiresAt));
+    private String hashPassword(String password) {
         try {
-            sendOtpByEmail(normalizedEmail, otp);
-            return "OTP request accepted. Check your email for the code.";
-        } catch (Exception e) {
-            otpStore.remove(normalizedEmail.toLowerCase());
-            throw new Exception("Unable to send OTP email: " + e.getMessage(), e);
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashedBytes = digest.digest(password.getBytes(StandardCharsets.UTF_8));
+            return bytesToHex(hashedBytes);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("Unable to hash password", e);
         }
     }
 
-    private boolean validateOtp(String email, String otp) {
-        if (email == null || otp == null) {
-            return false;
+    private String bytesToHex(byte[] bytes) {
+        StringBuilder builder = new StringBuilder();
+        for (byte b : bytes) {
+            builder.append(String.format("%02x", b));
         }
-
-        String normalizedEmail = email.trim().toLowerCase();
-        OtpDetails details = otpStore.get(normalizedEmail);
-        if (details == null || details.isExpired() || !details.getCode().equals(otp)) {
-            return false;
-        }
-
-        otpStore.remove(normalizedEmail);
-        return true;
+        return builder.toString();
     }
 
-    private void sendOtpByEmail(String email, String otp) throws Exception {
-        String subject = "Kumbukaa - One Time Password (OTP)";
-        String body = "Your OTP for Kumbukaa Lending App is: " + otp + "\n\n"
-                + "This OTP will expire in 10 minutes.\n"
-                + "Do not share this code with anyone.\n\n"
-                + "If you did not request this code, please ignore this email.";
-
-        if (resendApiKey != null && !resendApiKey.isBlank()) {
-            sendEmailWithResend(email, subject, body);
-        } else if (mailSender != null) {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(email);
-            message.setSubject(subject);
-            message.setText(body);
-            message.setFrom(mailFrom);
-            mailSender.send(message);
-        } else {
-            throw new IllegalStateException("No email delivery provider configured");
-        }
-        System.out.println("[OTP] Email sent successfully to: " + email);
+    private String createToken(User user) {
+        String payload = String.format("%d:%s:%d", user.getId(), user.getEmail(), System.currentTimeMillis());
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(payload.getBytes(StandardCharsets.UTF_8));
     }
 
-    private void sendEmailWithResend(String email, String subject, String body) throws Exception {
-        if (resendApiKey == null || resendApiKey.isBlank()) {
-            throw new IllegalStateException("Resend API key is not configured");
-        }
-        
-        RestTemplate restTemplate = new RestTemplate();
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        String apiKey = Objects.requireNonNull(resendApiKey, "resendApiKey is required");
-        String fromEmail = Objects.requireNonNull(resendFromEmail, "resendFromEmail is required");
-
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("from", fromEmail);
-        payload.put("to", email);
-        payload.put("subject", subject);
-        payload.put("text", body);
-
-        ObjectMapper mapper = new ObjectMapper();
-        String json = mapper.writeValueAsString(payload);
-        String payloadJson = Objects.requireNonNull(json, "payload json must not be null");
-
-        headers.setBearerAuth(apiKey);
-
-        HttpEntity<String> request = new HttpEntity<>(payloadJson, headers);
-        HttpMethod method = Objects.requireNonNull(HttpMethod.POST);
-        ResponseEntity<String> response = restTemplate.exchange(
-            "https://api.resend.com/emails",
-            method,
-            request,
-            String.class
-        );
-
-        if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new IllegalStateException("Resend email failed: " + response.getStatusCode() + " " + response.getBody());
-        }
-    }
-
-    private static class OtpDetails {
-        private final String code;
-        private final LocalDateTime expiresAt;
-
-        public OtpDetails(String code, LocalDateTime expiresAt) {
-            this.code = code;
-            this.expiresAt = expiresAt;
-        }
-
-        public String getCode() {
-            return code;
-        }
-
-        public boolean isExpired() {
-            return expiresAt.isBefore(LocalDateTime.now());
-        }
-    }
-
-    public AuthResponse refreshToken(String refreshToken) throws Exception {
-        if (!jwtTokenProvider.validateToken(refreshToken)) {
-            throw new Exception("Invalid or expired refresh token");
-        }
-
-        String email = jwtTokenProvider.getUsernameFromToken(refreshToken);
-        Long userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
-
-        Optional<Auth> authOptional = authRepository.findByEmail(email);
-        if (authOptional.isEmpty()) {
-            throw new Exception("User not found");
-        }
-
-        Auth auth = authOptional.get();
-
-        
-        String newToken = jwtTokenProvider.generateToken(email, userId);
-        String newRefreshToken = jwtTokenProvider.generateRefreshToken(email, userId);
-
-        
-        auth.setToken(newToken);
-        auth.setRefreshToken(newRefreshToken);
-        Auth updatedAuth = authRepository.save(auth);
-
-        
-        AuthResponse response = new AuthResponse();
-        response.setId(updatedAuth.getId());
-        response.setUserId(updatedAuth.getUser().getId());
-        response.setEmail(updatedAuth.getEmail());
-        response.setToken(newToken);
-        response.setRefreshToken(newRefreshToken);
-        response.setTokenExpiration(jwtTokenProvider.getTokenExpiration(newToken));
-        response.setIsVerified(updatedAuth.getIsVerified());
-        response.setMessage("Token refreshed successfully");
-
-        return response;
-    }
-
-    public void logout(Long authId) throws Exception {
-        if (authId == null) {
-            throw new Exception("Auth ID is required");
-        }
-        Optional<Auth> authOptional = authRepository.findById(authId);
-        if (authOptional.isEmpty()) {
-            throw new Exception("Auth record not found");
-        }
-
-        Auth auth = authOptional.get();
-        auth.setToken(null);
-        auth.setRefreshToken(null);
-        authRepository.save(auth);
-    }
-
-    public Auth createAuth(Auth auth) {
-        if (auth == null) {
-            throw new IllegalArgumentException("Auth record cannot be null");
-        }
-        return authRepository.save(auth);
-    }
-
-    public Optional<Auth> findById(Long id) {
-        if (id == null) {
-            return Optional.empty();
-        }
-        return authRepository.findById(id);
-    }
-
-    public Optional<Auth> findByEmail(String email) {
-        return authRepository.findByEmail(email);
-    }
-
-    public Optional<Auth> findByUserId(Long userId) {
-        return authRepository.findByUserId(userId);
-    }
-
-    public List<Auth> findAll() {
-        return authRepository.findAll();
-    }
-
-    public Auth updateAuth(Auth auth) {
-        if (auth == null) {
-            throw new IllegalArgumentException("Auth record cannot be null");
-        }
-        return authRepository.save(auth);
-    }
-
-    public void deleteAuth(Long id) {
-        if (id != null) {
-            authRepository.deleteById(id);
-        }
-    }
-
-    public boolean verifyAuth(Long id) {
-        if (id == null) return false;
-        Optional<Auth> authOptional = authRepository.findById(id);
-        if (authOptional.isPresent()) {
-            Auth auth = authOptional.get();
-            auth.setIsVerified(true);
-            authRepository.save(auth);
-            return true;
-        }
-        return false;
-    }
-
-    public boolean validateToken(String token) {
-        return jwtTokenProvider.validateToken(token) && !jwtTokenProvider.isTokenExpired(token);
-    }
-
-    public String getUsernameFromToken(String token) {
-        return jwtTokenProvider.getUsernameFromToken(token);
-    }
-
-    public Long getUserIdFromToken(String token) {
-        return jwtTokenProvider.getUserIdFromToken(token);
+    private String createRefreshToken(User user) {
+        String payload = String.format("refresh:%d:%s:%d", user.getId(), user.getEmail(), System.currentTimeMillis());
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(payload.getBytes(StandardCharsets.UTF_8));
     }
 }

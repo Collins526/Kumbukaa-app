@@ -2,5 +2,12 @@ $kind: http-request
 url: "{{baseUrl}}/api/transactions/{{transactionId}}/approve"
 method: POST
 headers:
+  Content-Type: application/json
   Authorization: Bearer {{token}}
+body:
+  type: text
+  content: |-
+    {
+      "paymentAmount": 1500.0
+    }
 order: 3000

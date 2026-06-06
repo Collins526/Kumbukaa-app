@@ -9,11 +9,6 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class AuthResponse {
-    private Long userId;
-    private String email;
-    private String name;
-    private String message;
-    private String token;
-    private String refreshToken;
+public class PaymentRequest {
+    private Double amount;
 }

@@ -9,11 +9,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class AuthResponse {
-    private Long userId;
+public class LoginWithOtpRequest {
     private String email;
-    private String name;
-    private String message;
-    private String token;
-    private String refreshToken;
+    private String code;
 }

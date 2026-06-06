@@ -1,33 +1,38 @@
 package com.kumbukaa.entity;
 
+import com.kumbukaa.enums.PersonalLoanStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "app_user")
+@Table(name = "loan_lent")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class LoanLent {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String fullName;
-
-    @Column(nullable = false, unique = true)
-    private String email;
-
-    @Column(nullable = false)
+    private String personName;
     private String phoneNumber;
+    private Double amountLent;
+    private Double amountPaid;
+    private Double balance;
+    private LocalDate dateLent;
+    private LocalDate dueDate;
 
-    @Column(nullable = false)
-    private String passwordHash;
+    @Enumerated(EnumType.STRING)
+    private PersonalLoanStatus status;
+
+    @Column(columnDefinition = "TEXT")
+    private String notes;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

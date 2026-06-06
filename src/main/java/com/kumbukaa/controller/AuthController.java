@@ -2,156 +2,59 @@ package com.kumbukaa.controller;
 
 import com.kumbukaa.dto.AuthResponse;
 import com.kumbukaa.dto.LoginRequest;
+import com.kumbukaa.dto.LoginWithOtpRequest;
 import com.kumbukaa.dto.OtpRequest;
 import com.kumbukaa.dto.RegisterRequest;
-import com.kumbukaa.dto.TokenRefreshRequest;
-import com.kumbukaa.entity.Auth;
 import com.kumbukaa.service.AuthService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Optional;
-
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*")
 public class AuthController {
 
-    @Autowired
-    private AuthService authService;
+    private final AuthService authService;
+
+    public AuthController(AuthService authService) {
+        this.authService = authService;
+    }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
         try {
-            AuthResponse response = authService.register(request);
-            return new ResponseEntity<>(response, HttpStatus.CREATED);
-        } catch (Exception e) {
-            AuthResponse error = new AuthResponse(null, null, null, null, null, null, false, e.getMessage());
-            return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(authService.register(request), HttpStatus.CREATED);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new AuthResponse(null, null, null, e.getMessage(), null, null));
         }
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
         try {
-            AuthResponse response = authService.login(request);
-            return new ResponseEntity<>(response, HttpStatus.OK);
-        } catch (Exception e) {
-            AuthResponse error = new AuthResponse(null, null, null, null, null, null, false, e.getMessage());
-            return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+            return ResponseEntity.ok(authService.login(request));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new AuthResponse(null, null, null, e.getMessage(), null, null));
         }
     }
 
     @PostMapping("/request-otp")
-    public ResponseEntity<?> requestOtp(@RequestBody OtpRequest request) {
+    public ResponseEntity<String> requestOtp(@RequestBody OtpRequest request) {
         try {
-            String message = authService.requestOtp(request.getEmail());
-            AuthResponse response = new AuthResponse(null, null, request.getEmail(), null, null, null, false, message);
-            return new ResponseEntity<>(response, HttpStatus.OK);
-        } catch (Exception e) {
-            AuthResponse error = new AuthResponse(null, null, null, null, null, null, false, e.getMessage());
-            return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+            return ResponseEntity.ok(authService.requestOtp(request));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
-    @PostMapping("/refresh-token")
-    public ResponseEntity<?> refreshToken(@RequestBody TokenRefreshRequest request) {
+    @PostMapping("/login-otp")
+    public ResponseEntity<AuthResponse> loginWithOtp(@RequestBody LoginWithOtpRequest request) {
         try {
-            AuthResponse response = authService.refreshToken(request.getRefreshToken());
-            return new ResponseEntity<>(response, HttpStatus.OK);
-        } catch (Exception e) {
-            return new ResponseEntity<>(new AuthResponse(null, null, null, null, null, null, false, e.getMessage()), HttpStatus.UNAUTHORIZED);
+            return ResponseEntity.ok(authService.loginWithOtp(request));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new AuthResponse(null, null, null, e.getMessage(), null, null));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(new AuthResponse(null, null, null, e.getMessage(), null, null));
         }
-    }
-
-    @PostMapping("/logout/{authId}")
-    public ResponseEntity<?> logout(@PathVariable Long authId) {
-        try {
-            authService.logout(authId);
-            AuthResponse response = new AuthResponse(null, null, null, null, null, null, true, "Logout successful");
-            return new ResponseEntity<>(response, HttpStatus.OK);
-        } catch (Exception e) {
-            AuthResponse error = new AuthResponse(null, null, null, null, null, null, false, e.getMessage());
-            return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
-        }
-    }
-
-    @PostMapping("/validate-token")
-    public ResponseEntity<?> validateToken(@RequestHeader(value = "Authorization", required = false) String token) {
-        try {
-            if (token == null || !token.startsWith("Bearer ")) {
-                AuthResponse error = new AuthResponse(null, null, null, null, null, null, false, "Invalid token format");
-                return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
-            }
-            String jwtToken = token.substring(7);
-            boolean isValid = authService.validateToken(jwtToken);
-            if (isValid) {
-                String email = authService.getUsernameFromToken(jwtToken);
-                Long userId = authService.getUserIdFromToken(jwtToken);
-                return new ResponseEntity<>(new AuthResponse(null, userId, email, null, null, null, true, "Token is valid"), HttpStatus.OK);
-            }
-            AuthResponse error = new AuthResponse(null, null, null, null, null, null, false, "Token is invalid or expired");
-            return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
-        } catch (Exception e) {
-            AuthResponse error = new AuthResponse(null, null, null, null, null, null, false, e.getMessage());
-            return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
-        }
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getAuthById(@PathVariable Long id) {
-        Optional<Auth> auth = authService.findById(id);
-        if (auth.isPresent()) {
-            return new ResponseEntity<>(auth.get(), HttpStatus.OK);
-        }
-        return new ResponseEntity<>("Auth not found", HttpStatus.NOT_FOUND);
-    }
-
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<?> getAuthByUserId(@PathVariable Long userId) {
-        Optional<Auth> auth = authService.findByUserId(userId);
-        if (auth.isPresent()) {
-            return new ResponseEntity<>(auth.get(), HttpStatus.OK);
-        }
-        return new ResponseEntity<>("Auth record not found for user", HttpStatus.NOT_FOUND);
-    }
-
-    @GetMapping("/all")
-    public ResponseEntity<?> getAllAuth() {
-        List<Auth> authList = authService.findAll();
-        return new ResponseEntity<>(authList, HttpStatus.OK);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateAuth(@PathVariable Long id, @RequestBody Auth auth) {
-        Optional<Auth> existingAuth = authService.findById(id);
-        if (existingAuth.isPresent()) {
-            auth.setId(id);
-            Auth updatedAuth = authService.updateAuth(auth);
-            return new ResponseEntity<>(updatedAuth, HttpStatus.OK);
-        }
-        return new ResponseEntity<>("Auth not found", HttpStatus.NOT_FOUND);
-    }
-
-    @PutMapping("/{id}/verify")
-    public ResponseEntity<?> verifyAuth(@PathVariable Long id) {
-        boolean verified = authService.verifyAuth(id);
-        if (verified) {
-            return new ResponseEntity<>("Auth verified successfully", HttpStatus.OK);
-        }
-        return new ResponseEntity<>("Auth not found", HttpStatus.NOT_FOUND);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteAuth(@PathVariable Long id) {
-        Optional<Auth> auth = authService.findById(id);
-        if (auth.isPresent()) {
-            authService.deleteAuth(id);
-            return new ResponseEntity<>("Auth deleted successfully", HttpStatus.OK);
-        }
-        return new ResponseEntity<>("Auth not found", HttpStatus.NOT_FOUND);
     }
 }
