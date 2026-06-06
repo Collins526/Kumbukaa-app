@@ -1,5 +1,6 @@
 package com.kumbukaa.service;
 
+import com.kumbukaa.config.JwtTokenProvider;
 import com.kumbukaa.dto.AuthResponse;
 import com.kumbukaa.dto.LoginRequest;
 import com.kumbukaa.dto.LoginWithOtpRequest;
@@ -16,7 +17,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
-import java.util.Base64;
 import java.util.Optional;
 import java.util.Random;
 
@@ -27,12 +27,14 @@ public class AuthService {
     private final UserRepository userRepository;
     private final OtpCodeRepository otpCodeRepository;
     private final EmailService emailService;
+    private final JwtTokenProvider jwtTokenProvider;
     private final Random random;
 
-    public AuthService(UserRepository userRepository, OtpCodeRepository otpCodeRepository, EmailService emailService) {
+    public AuthService(UserRepository userRepository, OtpCodeRepository otpCodeRepository, EmailService emailService, JwtTokenProvider jwtTokenProvider) {
         this.userRepository = userRepository;
         this.otpCodeRepository = otpCodeRepository;
         this.emailService = emailService;
+        this.jwtTokenProvider = jwtTokenProvider;
         this.random = new Random();
     }
 
@@ -58,8 +60,8 @@ public class AuthService {
                 savedUser.getEmail(),
                 savedUser.getFullName(),
                 "Registration successful",
-                createToken(savedUser),
-                createRefreshToken(savedUser)
+                jwtTokenProvider.createAccessToken(savedUser),
+                jwtTokenProvider.createRefreshToken(savedUser)
         );
     }
 
@@ -79,8 +81,8 @@ public class AuthService {
                 user.getEmail(),
                 user.getFullName(),
                 "Login successful",
-                createToken(user),
-                createRefreshToken(user)
+                jwtTokenProvider.createAccessToken(user),
+                jwtTokenProvider.createRefreshToken(user)
         );
     }
 
@@ -131,8 +133,8 @@ public class AuthService {
                 user.getEmail(),
                 user.getFullName(),
                 "Login with OTP successful",
-                createToken(user),
-                createRefreshToken(user)
+                jwtTokenProvider.createAccessToken(user),
+                jwtTokenProvider.createRefreshToken(user)
         );
     }
 
@@ -190,13 +192,4 @@ public class AuthService {
         return builder.toString();
     }
 
-    private String createToken(User user) {
-        String payload = String.format("%d:%s:%d", user.getId(), user.getEmail(), System.currentTimeMillis());
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(payload.getBytes(StandardCharsets.UTF_8));
-    }
-
-    private String createRefreshToken(User user) {
-        String payload = String.format("refresh:%d:%s:%d", user.getId(), user.getEmail(), System.currentTimeMillis());
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(payload.getBytes(StandardCharsets.UTF_8));
-    }
 }

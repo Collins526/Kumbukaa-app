@@ -83,6 +83,8 @@ Expected response:
 }
 ```
 
+Use the returned `token` value in the `Authorization: Bearer <jwt-token>` header for protected dashboard and loan endpoints. Access tokens expire after 24 hours, so refresh the login flow when the token expires.
+
 ### Request OTP for login
 
 POST `/api/auth/request-otp`
@@ -129,6 +131,8 @@ Expected response:
 }
 ```
 
+Use the returned `token` value in the `Authorization: Bearer <jwt-token>` header for protected dashboard and loan endpoints.
+
 ---
 
 ## 4. Dashboard endpoint
@@ -138,7 +142,7 @@ Expected response:
 Request:
 
 ```bash
-curl http://localhost:8080/api/dashboard/summary
+curl -H "Authorization: Bearer <jwt-token>" http://localhost:8080/api/dashboard/summary
 ```
 
 Expected response:
@@ -165,6 +169,7 @@ POST `/api/loans-lent`
 
 ```bash
 curl -X POST http://localhost:8080/api/loans-lent \
+  -H "Authorization: Bearer <jwt-token>" \
   -H "Content-Type: application/json" \
   -d '{
     "personName": "John Doe",
