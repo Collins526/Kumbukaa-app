@@ -14,6 +14,15 @@ public class HealthController {
 
     @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> health() {
+        return buildHealthResponse();
+    }
+
+    @GetMapping("/")
+    public ResponseEntity<Map<String, Object>> root() {
+        return buildHealthResponse();
+    }
+
+    private ResponseEntity<Map<String, Object>> buildHealthResponse() {
         Map<String, Object> response = new HashMap<>();
         response.put("status", "UP");
         response.put("timestamp", Instant.now().toString());
