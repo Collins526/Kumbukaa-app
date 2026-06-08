@@ -28,8 +28,13 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
-        String path = request.getServletPath();
+        String path = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        if (contextPath != null && !contextPath.isBlank() && path.startsWith(contextPath)) {
+            path = path.substring(contextPath.length());
+        }
         return request.getMethod().equalsIgnoreCase("OPTIONS")
+                || "/api/auth".equals(path)
                 || path.startsWith("/api/auth/")
                 || "/health".equals(path)
                 || "/".equals(path);

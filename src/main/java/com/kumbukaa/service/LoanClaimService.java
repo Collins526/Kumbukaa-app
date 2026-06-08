@@ -58,6 +58,10 @@ public class LoanClaimService {
         List<LoanLent> lentToNewUser = loanLentRepository.findAllByPhoneNumber(phone);
 
         for (LoanLent source : lentToNewUser) {
+            if (source.getUserId() == null) {
+                continue;
+            }
+
             String lenderName = lookupUserFullName(source.getUserId());
             String lenderPhone = lookupUserPhone(source.getUserId());
 
@@ -91,6 +95,10 @@ public class LoanClaimService {
         List<LoanBorrowed> borrowedFromNewUser = loanBorrowedRepository.findAllByPhoneNumber(phone);
 
         for (LoanBorrowed source : borrowedFromNewUser) {
+            if (source.getUserId() == null) {
+                continue;
+            }
+
             String borrowerName = lookupUserFullName(source.getUserId());
             String borrowerPhone = lookupUserPhone(source.getUserId());
 
@@ -117,12 +125,18 @@ public class LoanClaimService {
     }
 
     private String lookupUserFullName(Long userId) {
+        if (userId == null) {
+            return "Unknown";
+        }
         return userRepository.findById(userId)
                 .map(User::getFullName)
                 .orElse("Unknown");
     }
 
     private String lookupUserPhone(Long userId) {
+        if (userId == null) {
+            return "";
+        }
         return userRepository.findById(userId)
                 .map(User::getPhoneNumber)
                 .orElse("");

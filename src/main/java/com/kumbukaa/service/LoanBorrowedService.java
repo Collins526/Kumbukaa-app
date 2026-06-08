@@ -3,6 +3,7 @@ package com.kumbukaa.service;
 import com.kumbukaa.dto.LoanBorrowedRequest;
 import com.kumbukaa.dto.PaymentRequest;
 import com.kumbukaa.entity.LoanBorrowed;
+import com.kumbukaa.entity.LoanPayment;
 import com.kumbukaa.enums.PersonalLoanStatus;
 import com.kumbukaa.repository.LoanBorrowedRepository;
 import com.kumbukaa.util.PhoneNumberUtils;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -93,6 +95,13 @@ public class LoanBorrowedService {
 
         double newAmountPaid = loan.getAmountPaid() + request.getAmount();
         double newBalance = Math.max(0.0, loan.getAmountBorrowed() - newAmountPaid);
+
+        LoanPayment payment = LoanPayment.builder()
+                .amount(request.getAmount())
+                .paymentDate(LocalDateTime.now())
+                .loanBorrowed(loan)
+                .build();
+        loan.getPayments().add(payment);
 
         loan.setAmountPaid(newAmountPaid);
         loan.setBalance(newBalance);
