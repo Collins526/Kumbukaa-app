@@ -5,6 +5,7 @@ import com.kumbukaa.dto.PaymentRequest;
 import com.kumbukaa.entity.LoanBorrowed;
 import com.kumbukaa.enums.PersonalLoanStatus;
 import com.kumbukaa.repository.LoanBorrowedRepository;
+import com.kumbukaa.util.PhoneNumberUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +15,7 @@ import java.util.Optional;
 
 @Service
 @Transactional
+@SuppressWarnings("null")
 public class LoanBorrowedService {
 
     private final LoanBorrowedRepository repository;
@@ -28,7 +30,7 @@ public class LoanBorrowedService {
         LoanBorrowed loan = LoanBorrowed.builder()
                 .userId(userId)
                 .personName(request.getPersonName())
-                .phoneNumber(request.getPhoneNumber())
+                .phoneNumber(PhoneNumberUtils.normalize(request.getPhoneNumber()))
                 .amountBorrowed(request.getAmountBorrowed())
                 .amountPaid(0.0)
                 .balance(request.getAmountBorrowed())
@@ -56,7 +58,7 @@ public class LoanBorrowedService {
         validateLoanRequest(request.getPersonName(), request.getPhoneNumber(), request.getAmountBorrowed());
 
         loan.setPersonName(request.getPersonName());
-        loan.setPhoneNumber(request.getPhoneNumber());
+        loan.setPhoneNumber(PhoneNumberUtils.normalize(request.getPhoneNumber()));
 
         if (request.getAmountBorrowed() != null && request.getAmountBorrowed() > 0) {
             loan.setAmountBorrowed(request.getAmountBorrowed());

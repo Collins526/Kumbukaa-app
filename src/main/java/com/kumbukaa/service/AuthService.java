@@ -10,6 +10,7 @@ import com.kumbukaa.entity.OtpCode;
 import com.kumbukaa.entity.User;
 import com.kumbukaa.repository.OtpCodeRepository;
 import com.kumbukaa.repository.UserRepository;
+import com.kumbukaa.util.PhoneNumberUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,13 +29,15 @@ public class AuthService {
     private final OtpCodeRepository otpCodeRepository;
     private final EmailService emailService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final LoanClaimService loanClaimService;
     private final Random random;
 
-    public AuthService(UserRepository userRepository, OtpCodeRepository otpCodeRepository, EmailService emailService, JwtTokenProvider jwtTokenProvider) {
+    public AuthService(UserRepository userRepository, OtpCodeRepository otpCodeRepository, EmailService emailService, JwtTokenProvider jwtTokenProvider, LoanClaimService loanClaimService) {
         this.userRepository = userRepository;
         this.otpCodeRepository = otpCodeRepository;
         this.emailService = emailService;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.loanClaimService = loanClaimService;
         this.random = new Random();
     }
 
@@ -47,14 +50,23 @@ public class AuthService {
             throw new IllegalArgumentException("Email is already registered");
         }
 
+        String normalizedPhone = PhoneNumberUtils.normalize(request.getPhoneNumber());
+        if (normalizedPhone == null || normalizedPhone.isBlank()) {
+            throw new IllegalArgumentException("Phone number is required");
+        }
+        if (userRepository.findByPhoneNumber(normalizedPhone).isPresent()) {
+            throw new IllegalArgumentException("Phone number is already registered");
+        }
+
         User user = User.builder()
                 .fullName(request.getName().trim())
                 .email(email)
-                .phoneNumber(request.getPhoneNumber().trim())
+                .phoneNumber(normalizedPhone)
                 .passwordHash(hashPassword(request.getPassword()))
                 .build();
 
         User savedUser = userRepository.save(user);
+        loanClaimService.claimCounterpartyLoans(savedUser);
         return new AuthResponse(
                 savedUser.getId(),
                 savedUser.getEmail(),
@@ -75,6 +87,8 @@ public class AuthService {
         if (!hashPassword(request.getPassword()).equals(user.getPasswordHash())) {
             throw new IllegalArgumentException("Invalid email or password");
         }
+
+        loanClaimService.claimCounterpartyLoans(user);
 
         return new AuthResponse(
                 user.getId(),
@@ -127,6 +141,8 @@ public class AuthService {
 
         otpCode.setUsed(true);
         otpCodeRepository.save(otpCode);
+
+        loanClaimService.claimCounterpartyLoans(user);
 
         return new AuthResponse(
                 user.getId(),
