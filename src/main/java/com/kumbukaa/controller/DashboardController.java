@@ -2,6 +2,7 @@ package com.kumbukaa.controller;
 
 import com.kumbukaa.dto.DashboardSummaryResponse;
 import com.kumbukaa.service.DashboardService;
+import com.kumbukaa.util.SecurityUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,6 +20,7 @@ public class DashboardController {
 
     @GetMapping("/summary")
     public ResponseEntity<DashboardSummaryResponse> getSummary() {
-        return ResponseEntity.ok(service.getSummary());
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(service.getSummary(userId));
     }
 }

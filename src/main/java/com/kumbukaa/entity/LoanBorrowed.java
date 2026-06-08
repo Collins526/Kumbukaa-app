@@ -20,6 +20,7 @@ public class LoanBorrowed {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private Long userId;
     private String personName;
     private String phoneNumber;
     private Double amountBorrowed;

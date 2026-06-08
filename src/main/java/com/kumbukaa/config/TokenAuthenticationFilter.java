@@ -58,7 +58,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
         }
 
         var authentication = userRepository.findById(userId)
-                .map(user -> new UsernamePasswordAuthenticationToken(user.getEmail(), null, Collections.emptyList()))
+                .map(user -> new UsernamePasswordAuthenticationToken(user, null, Collections.emptyList()))
                 .orElse(null);
 
         if (authentication == null) {

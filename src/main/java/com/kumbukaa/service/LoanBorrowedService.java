@@ -22,11 +22,11 @@ public class LoanBorrowedService {
         this.repository = repository;
     }
 
-    @SuppressWarnings("null")
-    public LoanBorrowed createLoan(LoanBorrowedRequest request) {
+    public LoanBorrowed createLoan(LoanBorrowedRequest request, Long userId) {
         validateLoanRequest(request.getPersonName(), request.getPhoneNumber(), request.getAmountBorrowed());
 
         LoanBorrowed loan = LoanBorrowed.builder()
+                .userId(userId)
                 .personName(request.getPersonName())
                 .phoneNumber(request.getPhoneNumber())
                 .amountBorrowed(request.getAmountBorrowed())
@@ -41,18 +41,16 @@ public class LoanBorrowedService {
         return repository.save(loan);
     }
 
-    public List<LoanBorrowed> findAll() {
-        return repository.findAll();
+    public List<LoanBorrowed> findAll(Long userId) {
+        return repository.findAllByUserId(userId);
     }
 
-    @SuppressWarnings("null")
-    public Optional<LoanBorrowed> findById(Long id) {
-        return repository.findById(id);
+    public Optional<LoanBorrowed> findById(Long id, Long userId) {
+        return repository.findByIdAndUserId(id, userId);
     }
 
-    @SuppressWarnings("null")
-    public LoanBorrowed updateLoan(Long id, LoanBorrowedRequest request) {
-        LoanBorrowed loan = repository.findById(id)
+    public LoanBorrowed updateLoan(Long id, LoanBorrowedRequest request, Long userId) {
+        LoanBorrowed loan = repository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new IllegalArgumentException("LoanBorrowed not found for id: " + id));
 
         validateLoanRequest(request.getPersonName(), request.getPhoneNumber(), request.getAmountBorrowed());
@@ -73,18 +71,18 @@ public class LoanBorrowedService {
         return repository.save(loan);
     }
 
-    @SuppressWarnings("null")
-    public void deleteLoan(Long id) {
-        repository.deleteById(id);
+    public void deleteLoan(Long id, Long userId) {
+        LoanBorrowed loan = repository.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new IllegalArgumentException("LoanBorrowed not found for id: " + id));
+        repository.delete(loan);
     }
 
-    @SuppressWarnings("null")
-    public LoanBorrowed recordPayment(Long id, PaymentRequest request) {
+    public LoanBorrowed recordPayment(Long id, PaymentRequest request, Long userId) {
         if (request == null || request.getAmount() == null || request.getAmount() <= 0) {
             throw new IllegalArgumentException("Payment amount must be greater than zero");
         }
 
-        LoanBorrowed loan = repository.findById(id)
+        LoanBorrowed loan = repository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new IllegalArgumentException("LoanBorrowed not found for id: " + id));
 
         if (loan.getBalance() <= 0) {

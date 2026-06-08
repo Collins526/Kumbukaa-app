@@ -21,9 +21,9 @@ public class DashboardService {
         this.borrowedRepository = borrowedRepository;
     }
 
-    public DashboardSummaryResponse getSummary() {
-        List<LoanLent> lentLoans = lentRepository.findAll();
-        List<LoanBorrowed> borrowedLoans = borrowedRepository.findAll();
+    public DashboardSummaryResponse getSummary(Long userId) {
+        List<LoanLent> lentLoans = lentRepository.findAllByUserId(userId);
+        List<LoanBorrowed> borrowedLoans = borrowedRepository.findAllByUserId(userId);
 
         double totalLent = lentLoans.stream()
                 .mapToDouble(loan -> loan.getAmountLent() != null ? loan.getAmountLent() : 0.0)
