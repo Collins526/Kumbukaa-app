@@ -17,5 +17,7 @@ public interface LoanLentRepository extends JpaRepository<LoanLent, Long> {
     @Query("SELECT l FROM LoanLent l WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(l.phoneNumber, ' ', ''), '-', ''), '+', ''), '.', ''), '(', ''), ')', '') = :phoneNumber")
     List<LoanLent> findAllByPhoneNumber(@Param("phoneNumber") String phoneNumber);
 
+    Optional<LoanLent> findByPersonNameAndPhoneNumberAndAmountLentAndDateLent(String personName, String phoneNumber, Double amountLent, java.time.LocalDate dateLent);
+
     boolean existsByUserIdAndPhoneNumberAndAmountLentAndDateLent(Long userId, String phoneNumber, Double amountLent, java.time.LocalDate dateLent);
 }

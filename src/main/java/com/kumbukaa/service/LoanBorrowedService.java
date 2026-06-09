@@ -5,7 +5,10 @@ import com.kumbukaa.dto.PaymentRequest;
 import com.kumbukaa.entity.LoanBorrowed;
 import com.kumbukaa.entity.LoanPayment;
 import com.kumbukaa.enums.PersonalLoanStatus;
+import com.kumbukaa.entity.User;
 import com.kumbukaa.repository.LoanBorrowedRepository;
+import com.kumbukaa.repository.LoanLentRepository;
+import com.kumbukaa.repository.UserRepository;
 import com.kumbukaa.util.PhoneNumberUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,9 +24,13 @@ import java.util.Optional;
 public class LoanBorrowedService {
 
     private final LoanBorrowedRepository repository;
+    private final LoanLentRepository lentRepository;
+    private final UserRepository userRepository;
 
-    public LoanBorrowedService(LoanBorrowedRepository repository) {
+    public LoanBorrowedService(LoanBorrowedRepository repository, LoanLentRepository lentRepository, UserRepository userRepository) {
         this.repository = repository;
+        this.lentRepository = lentRepository;
+        this.userRepository = userRepository;
     }
 
     public LoanBorrowed createLoan(LoanBorrowedRequest request, Long userId) {
@@ -42,7 +49,9 @@ public class LoanBorrowedService {
                 .status(computeStatus(request.getAmountBorrowed(), 0.0, request.getDueDate()))
                 .build();
 
-        return repository.save(loan);
+        LoanBorrowed savedLoan = repository.save(loan);
+        syncLentMirror(savedLoan);
+        return savedLoan;
     }
 
     public List<LoanBorrowed> findAll(Long userId) {
@@ -72,7 +81,9 @@ public class LoanBorrowedService {
         loan.setNotes(request.getNotes());
         loan.setStatus(computeStatus(loan.getBalance(), loan.getAmountPaid(), loan.getDueDate()));
 
-        return repository.save(loan);
+        LoanBorrowed savedLoan = repository.save(loan);
+        syncLentMirror(savedLoan);
+        return savedLoan;
     }
 
     public void deleteLoan(Long id, Long userId) {
@@ -107,7 +118,47 @@ public class LoanBorrowedService {
         loan.setBalance(newBalance);
         loan.setStatus(computeStatus(newBalance, newAmountPaid, loan.getDueDate()));
 
-        return repository.save(loan);
+        LoanBorrowed savedLoan = repository.save(loan);
+        syncLentMirror(savedLoan, payment);
+        return savedLoan;
+    }
+
+    private void syncLentMirror(LoanBorrowed loan) {
+        syncLentMirror(loan, null);
+    }
+
+    private void syncLentMirror(LoanBorrowed loan, LoanPayment payment) {
+        if (loan.getUserId() == null) {
+            return;
+        }
+
+        User currentUser = userRepository.findById(loan.getUserId()).orElse(null);
+        if (currentUser == null) {
+            return;
+        }
+
+        lentRepository.findByPersonNameAndPhoneNumberAndAmountLentAndDateLent(
+                        currentUser.getFullName(),
+                        currentUser.getPhoneNumber(),
+                        loan.getAmountBorrowed(),
+                        loan.getDateBorrowed())
+                .ifPresent(mirror -> {
+                    mirror.setAmountLent(loan.getAmountBorrowed());
+                    mirror.setAmountPaid(loan.getAmountPaid());
+                    mirror.setBalance(loan.getBalance());
+                    mirror.setDateLent(loan.getDateBorrowed());
+                    mirror.setDueDate(loan.getDueDate());
+                    mirror.setStatus(loan.getStatus());
+                    mirror.setNotes(loan.getNotes());
+                    if (payment != null) {
+                        mirror.getPayments().add(LoanPayment.builder()
+                                .amount(payment.getAmount())
+                                .paymentDate(payment.getPaymentDate())
+                                .loanLent(mirror)
+                                .build());
+                    }
+                    lentRepository.save(mirror);
+                });
     }
 
     private PersonalLoanStatus computeStatus(Double balance, Double amountPaid, LocalDate dueDate) {

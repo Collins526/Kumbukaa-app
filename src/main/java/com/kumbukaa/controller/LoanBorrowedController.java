@@ -1,8 +1,9 @@
 package com.kumbukaa.controller;
 
 import com.kumbukaa.dto.LoanBorrowedRequest;
+import com.kumbukaa.dto.LoanResponse;
 import com.kumbukaa.dto.PaymentRequest;
-import com.kumbukaa.entity.LoanBorrowed;
+import com.kumbukaa.mapper.LoanResponseMapper;
 import com.kumbukaa.service.LoanBorrowedService;
 import com.kumbukaa.util.SecurityUtils;
 import org.springframework.http.HttpStatus;
@@ -22,30 +23,32 @@ public class LoanBorrowedController {
     }
 
     @PostMapping
-    public ResponseEntity<LoanBorrowed> createLoan(@RequestBody LoanBorrowedRequest request) {
+    public ResponseEntity<LoanResponse> createLoan(@RequestBody LoanBorrowedRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        return new ResponseEntity<>(service.createLoan(request, userId), HttpStatus.CREATED);
+        return new ResponseEntity<>(LoanResponseMapper.toResponse(service.createLoan(request, userId)), HttpStatus.CREATED);
     }
 
     @GetMapping
-    public ResponseEntity<List<LoanBorrowed>> getAllLoans() {
+    public ResponseEntity<List<LoanResponse>> getAllLoans() {
         Long userId = SecurityUtils.getCurrentUserId();
-        return ResponseEntity.ok(service.findAll(userId));
+        return ResponseEntity.ok(service.findAll(userId).stream()
+                .map(LoanResponseMapper::toResponse)
+                .toList());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<LoanBorrowed> getLoanById(@PathVariable Long id) {
+    public ResponseEntity<LoanResponse> getLoanById(@PathVariable Long id) {
         Long userId = SecurityUtils.getCurrentUserId();
         return service.findById(id, userId)
-                .map(ResponseEntity::ok)
+                .map(loan -> ResponseEntity.ok(LoanResponseMapper.toResponse(loan)))
                 .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<LoanBorrowed> updateLoan(@PathVariable Long id, @RequestBody LoanBorrowedRequest request) {
+    public ResponseEntity<LoanResponse> updateLoan(@PathVariable Long id, @RequestBody LoanBorrowedRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         try {
-            return ResponseEntity.ok(service.updateLoan(id, request, userId));
+            return ResponseEntity.ok(LoanResponseMapper.toResponse(service.updateLoan(id, request, userId)));
         } catch (IllegalArgumentException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
@@ -59,10 +62,10 @@ public class LoanBorrowedController {
     }
 
     @PostMapping("/{id}/payment")
-    public ResponseEntity<LoanBorrowed> recordPayment(@PathVariable Long id, @RequestBody PaymentRequest request) {
+    public ResponseEntity<LoanResponse> recordPayment(@PathVariable Long id, @RequestBody PaymentRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         try {
-            return ResponseEntity.ok(service.recordPayment(id, request, userId));
+            return ResponseEntity.ok(LoanResponseMapper.toResponse(service.recordPayment(id, request, userId)));
         } catch (IllegalArgumentException e) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         } catch (IllegalStateException e) {

@@ -17,5 +17,7 @@ public interface LoanBorrowedRepository extends JpaRepository<LoanBorrowed, Long
     @Query("SELECT l FROM LoanBorrowed l WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(l.phoneNumber, ' ', ''), '-', ''), '+', ''), '.', ''), '(', ''), ')', '') = :phoneNumber")
     List<LoanBorrowed> findAllByPhoneNumber(@Param("phoneNumber") String phoneNumber);
 
+    Optional<LoanBorrowed> findByPersonNameAndPhoneNumberAndAmountBorrowedAndDateBorrowed(String personName, String phoneNumber, Double amountBorrowed, java.time.LocalDate dateBorrowed);
+
     boolean existsByUserIdAndPhoneNumberAndAmountBorrowedAndDateBorrowed(Long userId, String phoneNumber, Double amountBorrowed, java.time.LocalDate dateBorrowed);
 }
