@@ -29,6 +29,9 @@ public class User {
     @Column(nullable = false)
     private String passwordHash;
 
+    /** Comma-separated roles, e.g. "ROLE_USER,ROLE_ADMIN" */
+    private String roles;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

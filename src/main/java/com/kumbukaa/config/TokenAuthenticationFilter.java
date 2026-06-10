@@ -13,7 +13,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class TokenAuthenticationFilter extends OncePerRequestFilter {
@@ -36,6 +39,8 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
         return request.getMethod().equalsIgnoreCase("OPTIONS")
                 || "/api/auth".equals(path)
                 || path.startsWith("/api/auth/")
+                || "/api/admins".equals(path)
+                || "/api/admin/login".equals(path)
                 || "/health".equals(path)
                 || "/".equals(path);
     }
@@ -63,8 +68,19 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
         }
 
         var authentication = userRepository.findById(userId)
-                .map(user -> new UsernamePasswordAuthenticationToken(user, null, Collections.emptyList()))
-                .orElse(null);
+            .map(user -> {
+                String roles = user.getRoles();
+                List<org.springframework.security.core.GrantedAuthority> authorities = Collections.emptyList();
+                if (roles != null && !roles.isBlank()) {
+                    authorities = Arrays.stream(roles.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isBlank())
+                        .map(org.springframework.security.core.authority.SimpleGrantedAuthority::new)
+                        .collect(Collectors.toList());
+                }
+                return new UsernamePasswordAuthenticationToken(user, null, authorities);
+            })
+            .orElse(null);
 
         if (authentication == null) {
             sendUnauthorized(response);

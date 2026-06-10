@@ -62,7 +62,8 @@ public class AuthService {
                 .fullName(request.getName().trim())
                 .email(email)
                 .phoneNumber(normalizedPhone)
-                .passwordHash(hashPassword(request.getPassword()))
+            .passwordHash(hashPassword(request.getPassword()))
+            .roles("ROLE_USER")
                 .build();
 
         User savedUser = userRepository.save(user);
@@ -95,6 +96,32 @@ public class AuthService {
                 user.getEmail(),
                 user.getFullName(),
                 "Login successful",
+                jwtTokenProvider.createAccessToken(user),
+                jwtTokenProvider.createRefreshToken(user)
+        );
+    }
+
+    public AuthResponse adminLogin(LoginRequest request) {
+        validateLoginRequest(request);
+
+        String email = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
+
+        if (!hashPassword(request.getPassword()).equals(user.getPasswordHash())) {
+            throw new IllegalArgumentException("Invalid email or password");
+        }
+
+        // Verify user has admin role
+        if (user.getRoles() == null || !user.getRoles().contains("ROLE_ADMIN")) {
+            throw new IllegalArgumentException("User is not authorized as an admin");
+        }
+
+        return new AuthResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getFullName(),
+                "Admin login successful",
                 jwtTokenProvider.createAccessToken(user),
                 jwtTokenProvider.createRefreshToken(user)
         );
