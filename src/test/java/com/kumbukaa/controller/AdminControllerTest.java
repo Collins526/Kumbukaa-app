@@ -13,7 +13,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.*;
 
 class AdminControllerTest {
@@ -38,7 +37,7 @@ class AdminControllerTest {
                 admin, null, List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"))));
 
         var resp = controller.getAllUsersWithLoans();
-        assertEquals(200, resp.getStatusCodeValue());
+        assertEquals(200, resp.getStatusCode().value());
         verify(svc).listAllUsersWithLoans();
     }
 
@@ -54,7 +53,7 @@ class AdminControllerTest {
                 user, null, List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"))));
 
         var resp = controller.getAllUsersWithLoans();
-        assertEquals(403, resp.getStatusCodeValue());
+        assertEquals(403, resp.getStatusCode().value());
         verifyNoInteractions(svc);
     }
 
@@ -85,9 +84,10 @@ class AdminControllerTest {
         when(tokenProvider.createRefreshToken(created)).thenReturn("refresh-token-xyz");
 
         var resp = controller.createAdminUser(request);
-        assertEquals(201, resp.getStatusCodeValue());
-        assertEquals("access-token-abc", resp.getBody().getToken());
-        assertEquals("refresh-token-xyz", resp.getBody().getRefreshToken());
+        assertEquals(201, resp.getStatusCode().value());
+        var body = java.util.Objects.requireNonNull(resp.getBody());
+        assertEquals("access-token-abc", body.getToken());
+        assertEquals("refresh-token-xyz", body.getRefreshToken());
         verify(svc).createAdminUser("Admin User", "admin@example.com", "+254700000000", "SecurePassword123");
     }
 
@@ -106,7 +106,7 @@ class AdminControllerTest {
                 "");
 
         var resp = controller.createAdminUser(request);
-        assertEquals(400, resp.getStatusCodeValue());
+        assertEquals(400, resp.getStatusCode().value());
         verifyNoInteractions(svc);
         verifyNoInteractions(tokenProvider);
     }
@@ -127,9 +127,10 @@ class AdminControllerTest {
         request.setPassword("NewPass123");
 
         var resp = controller.resetUserPassword(1L, request);
-        assertEquals(200, resp.getStatusCodeValue());
-        assertEquals("New password created", resp.getBody().getMessage());
-        assertEquals("NewPass123", resp.getBody().getPassword());
+        assertEquals(200, resp.getStatusCode().value());
+        var body = java.util.Objects.requireNonNull(resp.getBody());
+        assertEquals("New password created", body.getMessage());
+        assertEquals("NewPass123", body.getPassword());
         verify(svc).resetUserPassword(1L, "NewPass123");
     }
 }

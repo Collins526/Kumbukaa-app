@@ -2,8 +2,6 @@ package com.kumbukaa.service;
 
 import com.kumbukaa.dto.LoanResponse;
 import com.kumbukaa.dto.UserAdminDto;
-import com.kumbukaa.entity.LoanBorrowed;
-import com.kumbukaa.entity.LoanLent;
 import com.kumbukaa.entity.User;
 import com.kumbukaa.mapper.LoanResponseMapper;
 import com.kumbukaa.repository.LoanBorrowedRepository;
@@ -20,6 +18,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Transactional
+@SuppressWarnings("null")
 public class AdminService {
 
     private final UserRepository userRepository;
@@ -71,6 +70,12 @@ public class AdminService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         user.setPasswordHash(hashPassword(newPassword));
         userRepository.save(user);
+    }
+
+    public void deleteUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        userRepository.delete(user);
     }
 
     private String hashPassword(String password) {

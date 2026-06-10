@@ -436,6 +436,24 @@ Response:
 - `400 Bad Request` if the password is blank
 - `403 Forbidden` if the authenticated user is not an admin
 
+### 8.4 DELETE /api/admin/users/{id}
+
+Description: Admin removes a user (and their user record) from the system.
+
+Request:
+
+```bash
+curl -X DELETE http://localhost:8080/api/admin/users/42 \
+  -H "Authorization: Bearer <jwt-token>"
+```
+
+Response:
+
+- `204 No Content` on success
+- `403 Forbidden` if the authenticated user is not an admin
+- `404 Not Found` if the user id does not exist
+
+
 ### Authorization
 
 - `POST /api/admins` does not require an existing token.

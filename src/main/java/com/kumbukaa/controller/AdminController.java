@@ -58,6 +58,13 @@ public class AdminController {
         return ResponseEntity.ok(response);
     }
 
+    @DeleteMapping("/admin/users/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        adminService.deleteUser(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/admins")
     public ResponseEntity<AuthResponse> createAdminUser(@RequestBody AdminCreateRequest request) {
         if (request == null

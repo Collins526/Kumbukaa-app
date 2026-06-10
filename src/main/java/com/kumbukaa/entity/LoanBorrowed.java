@@ -1,7 +1,6 @@
 package com.kumbukaa.entity;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
-import com.kumbukaa.entity.LoanPayment;
 import com.kumbukaa.enums.PersonalLoanStatus;
 import jakarta.persistence.*;
 import lombok.*;
