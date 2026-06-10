@@ -8,6 +8,8 @@ import com.kumbukaa.entity.LoanPayment;
 import com.kumbukaa.enums.PersonalLoanStatus;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -21,13 +23,14 @@ public final class LoanResponseMapper {
         return LoanResponse.builder()
                 .id(loan.getId())
                 .loanAmount(loan.getAmountLent())
-                .amountPartiallyPaid(resolveAmountPartiallyPaid(loan.getAmountPaid(), loan.getBalance()))
+                .amountPaid(resolveAmountPaid(loan.getAmountPaid()))
                 .balance(loan.getBalance())
                 .personName(loan.getPersonName())
                 .phoneNumber(loan.getPhoneNumber())
                 .dueDate(resolveDueDate(loan.getStatus(), loan.getDueDate()))
                 .paymentDate(resolvePaymentDate(loan.getStatus(), loan.getPayments()))
                 .status(resolveStatus(loan.getStatus()))
+                .notes(loan.getNotes())
                 .installments(resolveInstallments(loan.getPayments()))
                 .build();
     }
@@ -36,19 +39,23 @@ public final class LoanResponseMapper {
         return LoanResponse.builder()
                 .id(loan.getId())
                 .loanAmount(loan.getAmountBorrowed())
-                .amountPartiallyPaid(resolveAmountPartiallyPaid(loan.getAmountPaid(), loan.getBalance()))
+                .amountPaid(resolveAmountPaid(loan.getAmountPaid()))
                 .balance(loan.getBalance())
                 .personName(loan.getPersonName())
                 .phoneNumber(loan.getPhoneNumber())
                 .dueDate(resolveDueDate(loan.getStatus(), loan.getDueDate()))
                 .paymentDate(resolvePaymentDate(loan.getStatus(), loan.getPayments()))
                 .status(resolveStatus(loan.getStatus()))
+                .notes(loan.getNotes())
                 .installments(resolveInstallments(loan.getPayments()))
                 .build();
     }
 
-    private static LocalDate resolveDueDate(PersonalLoanStatus status, LocalDate dueDate) {
-        return status == PersonalLoanStatus.PAID ? null : dueDate;
+    private static OffsetDateTime resolveDueDate(PersonalLoanStatus status, LocalDate dueDate) {
+        if (status == PersonalLoanStatus.PAID || dueDate == null) {
+            return null;
+        }
+        return dueDate.atStartOfDay().atOffset(ZoneOffset.UTC);
     }
 
     private static List<PaymentSummary> resolveInstallments(List<LoanPayment> payments) {
@@ -59,19 +66,19 @@ public final class LoanResponseMapper {
                 .filter(payment -> payment != null)
                 .map(payment -> PaymentSummary.builder()
                         .amount(payment.getAmount())
-                        .paymentDate(payment.getPaymentDate() != null ? payment.getPaymentDate().toLocalDate() : null)
+                        .paymentDate(payment.getPaymentDate() != null ? payment.getPaymentDate().atOffset(ZoneOffset.UTC) : null)
                         .build())
                 .toList();
     }
 
-    private static Double resolveAmountPartiallyPaid(Double amountPaid, Double balance) {
+    private static Double resolveAmountPaid(Double amountPaid) {
         if (amountPaid == null || amountPaid <= 0) {
             return 0.0;
         }
-        return balance == null || balance <= 0 ? amountPaid : amountPaid;
+        return amountPaid;
     }
 
-    private static LocalDate resolvePaymentDate(PersonalLoanStatus status, List<LoanPayment> payments) {
+    private static OffsetDateTime resolvePaymentDate(PersonalLoanStatus status, List<LoanPayment> payments) {
         if (status != PersonalLoanStatus.PAID) {
             return null;
         }
@@ -82,7 +89,7 @@ public final class LoanResponseMapper {
                 .map(LoanPayment::getPaymentDate)
                 .filter(date -> date != null)
                 .max(Comparator.naturalOrder())
-                .map(LocalDateTime::toLocalDate)
+                .map(date -> date.atOffset(ZoneOffset.UTC))
                 .orElse(null);
     }
 

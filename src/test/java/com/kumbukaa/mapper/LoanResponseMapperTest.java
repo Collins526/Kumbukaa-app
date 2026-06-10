@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -33,11 +35,11 @@ class LoanResponseMapperTest {
 
         assertEquals(1L, response.getId());
         assertEquals(5000.0, response.getLoanAmount());
-        assertEquals(1000.0, response.getAmountPartiallyPaid());
+        assertEquals(1000.0, response.getAmountPaid());
         assertEquals(4000.0, response.getBalance());
         assertEquals("John Doe", response.getPersonName());
         assertEquals("+254700000000", response.getPhoneNumber());
-        assertEquals(LocalDate.of(2026, 6, 20), response.getDueDate());
+        assertEquals(OffsetDateTime.of(2026, 6, 20, 0, 0, 0, 0, ZoneOffset.UTC), response.getDueDate());
         assertNull(response.getPaymentDate());
     }
 
@@ -63,11 +65,11 @@ class LoanResponseMapperTest {
 
         assertEquals(2L, response.getId());
         assertEquals(3000.0, response.getLoanAmount());
-        assertEquals(3000.0, response.getAmountPartiallyPaid());
+        assertEquals(3000.0, response.getAmountPaid());
         assertEquals(0.0, response.getBalance());
         assertEquals("Mary Smith", response.getPersonName());
         assertEquals("+254711111111", response.getPhoneNumber());
         assertNull(response.getDueDate());
-        assertEquals(LocalDate.of(2026, 6, 5), response.getPaymentDate());
+        assertEquals(OffsetDateTime.of(2026, 6, 5, 10, 15, 0, 0, ZoneOffset.UTC), response.getPaymentDate());
     }
 }

@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Getter
@@ -17,12 +17,13 @@ import java.util.List;
 public class LoanResponse {
     private Long id;
     private Double loanAmount;
-    private Double amountPartiallyPaid;
+    private Double amountPaid;
     private Double balance;
     private String personName;
     private String phoneNumber;
-    private LocalDate dueDate;
-    private LocalDate paymentDate;
+    private OffsetDateTime dueDate;
+    private OffsetDateTime paymentDate;
     private String status;
+    private String notes;
     private List<PaymentSummary> installments;
 }
