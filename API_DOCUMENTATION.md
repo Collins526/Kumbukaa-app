@@ -333,3 +333,102 @@ Record a repayment for a borrowed loan.
 - `OVERDUE` means the `dueDate` is before the current date and the balance is still positive.
 - `PARTIALLY_PAID` means some payment has been made but balance remains.
 - `ACTIVE` means the loan is current and has not received any payment yet.
+
+---
+
+## Health Endpoints
+
+### GET /
+### GET /health
+
+Check the health status of the backend API.
+
+#### Response
+- `200 OK` if the backend is healthy.
+- `503 Service Unavailable` if there is an issue.
+
+```json
+{
+  "status": "UP",
+  "timestamp": "2026-06-10T11:40:00Z",
+  "message": "Backend is healthy"
+}
+```
+
+---
+
+## Admin Endpoints
+
+Admin endpoints require a user with `ROLE_ADMIN` authority, typically authenticated via a JWT token.
+
+### POST /api/admin/login
+
+Login as an admin user.
+
+#### Request body
+
+```json
+{
+  "email": "admin@example.com",
+  "password": "SecurePassword123"
+}
+```
+
+#### Response
+- `200 OK`
+- Returns user details, access token, and refresh token.
+
+### GET /api/admin/users
+
+Get a list of all users along with their loan statistics. Requires admin privileges.
+
+#### Response
+- `200 OK`
+- Returns an array of `UserAdminDto` objects.
+- `403 Forbidden` if not an admin.
+
+### POST /api/admin/users/{id}/reset-password
+
+Reset a user's password. Requires admin privileges.
+
+#### Request body
+
+```json
+{
+  "password": "NewSecurePassword123"
+}
+```
+
+#### Response
+- `200 OK` with `ResetPasswordResponse` containing the new password.
+- `400 Bad Request` if password is missing or blank.
+- `403 Forbidden` if not an admin.
+
+### DELETE /api/admin/users/{id}
+
+Delete a user from the system. Requires admin privileges.
+
+#### Response
+- `204 No Content`
+- `403 Forbidden` if not an admin.
+
+### POST /api/admins
+
+Create a new admin user.
+
+#### Request body
+
+```json
+{
+  "fullName": "Admin User",
+  "email": "admin2@example.com",
+  "phoneNumber": "+254722000000",
+  "password": "SecurePassword123",
+  "confirmPassword": "SecurePassword123"
+}
+```
+
+#### Response
+- `201 Created`
+- Returns created admin user details along with access token and refresh token.
+- `400 Bad Request` if any fields are blank or passwords do not match.

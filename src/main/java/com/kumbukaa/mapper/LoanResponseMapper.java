@@ -26,6 +26,7 @@ public final class LoanResponseMapper {
                 .balance(loan.getBalance())
                 .personName(loan.getPersonName())
                 .phoneNumber(loan.getPhoneNumber())
+                .dateLent(resolveDate(loan.getDateLent()))
                 .dueDate(resolveDueDate(loan.getStatus(), loan.getDueDate()))
                 .paymentDate(resolvePaymentDate(loan.getStatus(), loan.getPayments()))
                 .status(resolveStatus(loan.getStatus()))
@@ -42,6 +43,7 @@ public final class LoanResponseMapper {
                 .balance(loan.getBalance())
                 .personName(loan.getPersonName())
                 .phoneNumber(loan.getPhoneNumber())
+                .dateBorrowed(resolveDate(loan.getDateBorrowed()))
                 .dueDate(resolveDueDate(loan.getStatus(), loan.getDueDate()))
                 .paymentDate(resolvePaymentDate(loan.getStatus(), loan.getPayments()))
                 .status(resolveStatus(loan.getStatus()))
@@ -90,6 +92,13 @@ public final class LoanResponseMapper {
                 .max(Comparator.naturalOrder())
                 .map(date -> date.atOffset(ZoneOffset.UTC))
                 .orElse(null);
+    }
+
+    private static OffsetDateTime resolveDate(LocalDate date) {
+        if (date == null) {
+            return null;
+        }
+        return date.atStartOfDay().atOffset(ZoneOffset.UTC);
     }
 
     private static String resolveStatus(PersonalLoanStatus status) {

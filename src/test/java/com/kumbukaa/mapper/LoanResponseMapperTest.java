@@ -27,6 +27,7 @@ class LoanResponseMapperTest {
                 .amountLent(5000.0)
                 .amountPaid(1000.0)
                 .balance(4000.0)
+                .dateLent(LocalDate.of(2026, 6, 15))
                 .dueDate(LocalDate.of(2026, 6, 20))
                 .status(PersonalLoanStatus.ACTIVE)
                 .build();
@@ -39,6 +40,9 @@ class LoanResponseMapperTest {
         assertEquals(4000.0, response.getBalance());
         assertEquals("John Doe", response.getPersonName());
         assertEquals("+254700000000", response.getPhoneNumber());
+        assertEquals(OffsetDateTime.of(2026, 6, 15, 0, 0, 0, 0, ZoneOffset.UTC), response.getDateLent());
+        assertEquals(OffsetDateTime.of(2026, 6, 15, 0, 0, 0, 0, ZoneOffset.UTC), response.getDateLent());
+        assertNull(response.getDateBorrowed());
         assertEquals(OffsetDateTime.of(2026, 6, 20, 0, 0, 0, 0, ZoneOffset.UTC), response.getDueDate());
         assertNull(response.getPaymentDate());
     }
@@ -52,6 +56,7 @@ class LoanResponseMapperTest {
                 .amountBorrowed(3000.0)
                 .amountPaid(3000.0)
                 .balance(0.0)
+                .dateBorrowed(LocalDate.of(2026, 6, 1))
                 .dueDate(LocalDate.of(2026, 6, 10))
                 .status(PersonalLoanStatus.PAID)
                 .payments(List.of(
@@ -69,6 +74,8 @@ class LoanResponseMapperTest {
         assertEquals(0.0, response.getBalance());
         assertEquals("Mary Smith", response.getPersonName());
         assertEquals("+254711111111", response.getPhoneNumber());
+        assertEquals(OffsetDateTime.of(2026, 6, 1, 0, 0, 0, 0, ZoneOffset.UTC), response.getDateBorrowed());
+        assertNull(response.getDateLent());
         assertNull(response.getDueDate());
         assertEquals(OffsetDateTime.of(2026, 6, 5, 10, 15, 0, 0, ZoneOffset.UTC), response.getPaymentDate());
     }
