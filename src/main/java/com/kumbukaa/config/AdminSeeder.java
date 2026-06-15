@@ -31,6 +31,7 @@ public class AdminSeeder implements ApplicationRunner {
     }
 
     @Override
+    @SuppressWarnings("null")
     public void run(ApplicationArguments args) throws Exception {
         try {
             logger.info("AdminSeeder: checking for existing ROLE_ADMIN users");
