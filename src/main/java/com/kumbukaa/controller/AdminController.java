@@ -5,6 +5,7 @@ import com.kumbukaa.dto.AdminCreateRequest;
 import com.kumbukaa.dto.AdminProfileResponse;
 import com.kumbukaa.dto.AuthResponse;
 import com.kumbukaa.dto.LoginRequest;
+import com.kumbukaa.dto.MessageResponse;
 import com.kumbukaa.dto.ResetPasswordResponse;
 import com.kumbukaa.dto.UserAdminDto;
 import com.kumbukaa.entity.User;
@@ -60,10 +61,10 @@ public class AdminController {
     }
 
     @DeleteMapping("/admin/users/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<MessageResponse> deleteUser(@PathVariable Long id) {
         if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         adminService.deleteUser(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(new MessageResponse("user deleted successfully"));
     }
 
     // Note: createAdminUser endpoint remains for compatibility with tests and tooling.
