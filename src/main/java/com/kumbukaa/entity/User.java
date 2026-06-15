@@ -32,6 +32,8 @@ public class User {
     /** Comma-separated roles, e.g. "ROLE_USER,ROLE_ADMIN" */
     private String roles;
 
+    private Boolean mustChangePassword;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

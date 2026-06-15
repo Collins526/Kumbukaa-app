@@ -38,6 +38,15 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/admin/login")
+    public ResponseEntity<AuthResponse> adminLogin(@RequestBody LoginRequest request) {
+        try {
+            return ResponseEntity.ok(authService.adminLogin(request));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new AuthResponse(null, null, null, e.getMessage(), null, null));
+        }
+    }
+
     @PostMapping("/request-otp")
     public ResponseEntity<String> requestOtp(@RequestBody OtpRequest request) {
         try {

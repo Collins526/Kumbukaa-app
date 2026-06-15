@@ -2,6 +2,7 @@ package com.kumbukaa.controller;
 
 import com.kumbukaa.config.JwtTokenProvider;
 import com.kumbukaa.dto.AdminCreateRequest;
+import com.kumbukaa.dto.AdminProfileResponse;
 import com.kumbukaa.dto.AuthResponse;
 import com.kumbukaa.dto.LoginRequest;
 import com.kumbukaa.dto.ResetPasswordResponse;
@@ -65,6 +66,7 @@ public class AdminController {
         return ResponseEntity.noContent().build();
     }
 
+    // Note: createAdminUser endpoint remains for compatibility with tests and tooling.
     @PostMapping("/admins")
     public ResponseEntity<AuthResponse> createAdminUser(@RequestBody AdminCreateRequest request) {
         if (request == null
@@ -113,5 +115,77 @@ public class AdminController {
         if (auth == null) return false;
         return auth.getAuthorities().stream()
                 .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+    }
+
+    @GetMapping("/admin/profile")
+    public ResponseEntity<AdminProfileResponse> getAdminProfile() {
+        if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        Object principal = auth.getPrincipal();
+        if (!(principal instanceof User)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        User user = (User) principal;
+        AdminProfileResponse dto = AdminProfileResponse.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .build();
+        return ResponseEntity.ok(dto);
+    }
+
+    @PostMapping("/admin/change-password")
+    public ResponseEntity<String> changeAdminPassword(@RequestBody ChangePasswordRequest request) {
+        if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        if (request == null || request.getNewPassword() == null || request.getNewPassword().isBlank()) {
+            return ResponseEntity.badRequest().body("New password is required");
+        }
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        Object principal = auth.getPrincipal();
+        if (!(principal instanceof User)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        User user = (User) principal;
+
+        // If mustChangePassword is set, allow change without current password
+        if (Boolean.TRUE.equals(user.getMustChangePassword())) {
+            user.setPasswordHash(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(request.getNewPassword()));
+            user.setMustChangePassword(false);
+            adminService.resetUserPassword(user.getId(), request.getNewPassword());
+            return ResponseEntity.ok("Password updated");
+        }
+
+        if (request.getCurrentPassword() == null || request.getCurrentPassword().isBlank()) {
+            return ResponseEntity.badRequest().body("Current password is required");
+        }
+
+        // verify current password
+        // reuse AuthService logic by fetching user from repository and checking
+        if (!new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().matches(request.getCurrentPassword(), user.getPasswordHash())
+                && !computeLegacyMatch(user.getPasswordHash(), request.getCurrentPassword())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Current password is incorrect");
+        }
+
+        user.setPasswordHash(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(request.getNewPassword()));
+        adminService.resetUserPassword(user.getId(), request.getNewPassword());
+        return ResponseEntity.ok("Password updated");
+    }
+
+    private boolean computeLegacyMatch(String storedHash, String rawPassword) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hashed = digest.digest(rawPassword.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hashed) sb.append(String.format("%02x", b));
+            return sb.toString().equalsIgnoreCase(storedHash);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            return false;
+        }
+    }
+
+    public static class ChangePasswordRequest {
+        private String currentPassword;
+        private String newPassword;
+
+        public String getCurrentPassword() { return currentPassword; }
+        public void setCurrentPassword(String currentPassword) { this.currentPassword = currentPassword; }
+        public String getNewPassword() { return newPassword; }
+        public void setNewPassword(String newPassword) { this.newPassword = newPassword; }
     }
 }

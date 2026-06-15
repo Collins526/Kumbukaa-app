@@ -59,7 +59,7 @@ public class AdminService {
                 .fullName(fullName.trim())
                 .email(email.toLowerCase().trim())
                 .phoneNumber(phoneNumber.trim())
-                .passwordHash(hashPassword(password))
+                .passwordHash(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(password))
                 .roles("ROLE_ADMIN")
                 .build();
         return userRepository.save(user);
@@ -68,7 +68,7 @@ public class AdminService {
     public void resetUserPassword(Long userId, String newPassword) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        user.setPasswordHash(hashPassword(newPassword));
+        user.setPasswordHash(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(newPassword));
         userRepository.save(user);
     }
 
@@ -78,21 +78,5 @@ public class AdminService {
         userRepository.delete(user);
     }
 
-    private String hashPassword(String password) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashedBytes = digest.digest(password.getBytes(StandardCharsets.UTF_8));
-            return bytesToHex(hashedBytes);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("Unable to hash password", e);
-        }
-    }
-
-    private String bytesToHex(byte[] bytes) {
-        StringBuilder builder = new StringBuilder();
-        for (byte b : bytes) {
-            builder.append(String.format("%02x", b));
-        }
-        return builder.toString();
-    }
+    
 }

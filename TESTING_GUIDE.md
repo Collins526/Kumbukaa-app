@@ -1,4 +1,4 @@
-# Kumbukaa Personal Loan Tracker Testing Guide
+﻿# Kumbukaa Personal Loan Tracker Testing Guide
 
 ## 1. Start the application
 
@@ -345,130 +345,213 @@ Use the above requests as individual Postman examples:
 
 ---
 
-## 8. Admin endpoints (role-based)
+## 8. Admin Endpoints
 
-The application exposes administrative endpoints for listing users with their loans and for resetting user passwords. These endpoints require an authenticated user with the `ROLE_ADMIN` authority.
+This system uses a **single ADMIN account** with no super-admin role or admin management features. The default ADMIN is created automatically on first startup with default credentials that **must be changed** after first login.
 
-### 8.1 POST /api/admins
+### 8.1 Admin Login
 
-Description: Create a new admin user. This is a dedicated admin creation endpoint and does not promote an existing regular user.
+**Endpoint:** `POST /api/auth/admin/login`
+
+Description: Admin logs in to receive JWT access and refresh tokens.
 
 Request:
 
-POST `/api/admins`
+```bash
+curl -X POST http://localhost:8080/api/auth/admin/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@localhost",
+    "password": "admin"
+  }'
+```
 
-curl -X POST http://localhost:8080/api/admins 
-  -H "Content-Type: application/json" 
-  -body {
-    "fullName": "Admin User",
-    "email": "admin@example.com",
-    "phoneNumber": "+254700000000",
-    "password": "AdminPassword123",
-    "confirmPassword": "AdminPassword123"
-  }
+Expected response (first login):
 
-Expected response:
-json
+```json
 {
-  "userId": 2,
-  "email": "admin@example.com",
-  "name": "Admin User",
-  "message": "Admin user created successfully",
+  "userId": 1,
+  "email": "admin@localhost",
+  "name": "Administrator",
+  "message": "Admin login successful - password change required",
   "token": "<jwt-token>",
   "refreshToken": "<refresh-token>"
 }
+```
 
- Admin login
+If password was already changed:
 
-POST `/api/admin/login`
-
-curl -X POST http://localhost:8080/api/admin/login 
-  -H "Content-Type: application/json" 
-  -body {
-    "email": "admin@example.com",
-    "password": "AdminPassword123"
-  }
-
-Expected response:
-json
+```json
 {
-  "userId": 2,
-  "email": "admin@example.com",
-  "name": "Admin User",
+  "userId": 1,
+  "email": "admin@localhost",
+  "name": "Administrator",
   "message": "Admin login successful",
   "token": "<jwt-token>",
   "refreshToken": "<refresh-token>"
 }
-
-Use the returned `token` value in the `Authorization: Bearer <jwt-token>` header for admin-protected endpoints such as `/api/admin/users` and `/api/admin/users/{id}/reset-password`.
-
-
-### 8.2 GET /api/admin/users
-
-Description: Returns all users with their `loansLent` and `loansBorrowed` lists.
-
-Request:
-
-```bash
-curl -X GET  http://localhost:8080/api/admin/users
--H "Authorization: Bearer <jwt-token>" \
-  
 ```
 
-Response: `200 OK` with JSON array of `UserAdminDto` objects. Each item contains `id`, `fullName`, `email`, `phoneNumber`, `loansLent`, and `loansBorrowed`.
+---
 
-### 8.3 POST /api/admin/users/{id}/reset-password
+### 8.2 Admin Profile
 
-Description: Admin resets the password for a user by ID. The new password is hashed with SHA-256 before saving.
+**Endpoint:** `GET /api/admin/profile`
 
-Request:
-
-```bash
-curl -X POST http://localhost:8080/api/admin/users/42/reset-password
--H "Authorization: Bearer <jwt-token>" \
-  -H "Content-Type: application/json" \
-  -d '{"password":"NewPass123"}' \
-```
-
-Response:
-
-- `204 No Content` on success
-- `400 Bad Request` if the password is blank
-- `403 Forbidden` if the authenticated user is not an admin
-
-### 8.4 DELETE /api/admin/users/{id}
-
-Description: Admin removes a user (and their user record) from the system.
+Description: Returns the admin's profile information.
 
 Request:
 
 ```bash
-curl -X DELETE http://localhost:8080/api/admin/users/42 \
+curl -X GET http://localhost:8080/api/admin/profile \
   -H "Authorization: Bearer <jwt-token>"
 ```
 
-Response:
+Expected response:
 
-- `204 No Content` on success
-- `403 Forbidden` if the authenticated user is not an admin
-- `404 Not Found` if the user id does not exist
+```json
+{
+  "id": 1,
+  "email": "admin@localhost",
+  "fullName": "Administrator",
+  "phoneNumber": "0000000000"
+}
+```
 
+---
 
-### Authorization
+### 8.3 Change Admin Password
 
-- `POST /api/admins` does not require an existing token.
-- Other admin endpoints under `/api/admin/**` still require a valid `ROLE_ADMIN` JWT.
-- The application populates granted authorities from the `roles` field on the `app_user` table (comma-separated values such as `ROLE_USER,ROLE_ADMIN`). The `TokenAuthenticationFilter` uses this field to set `GrantedAuthority` on the `Authentication` token.
+**Endpoint:** `POST /api/admin/change-password`
 
-### How to make a user an admin
+Description: Admin changes their password. When `mustChangePassword` is true (on first login), the current password is not required.
 
-- Regular user registration assigns `ROLE_USER` by default.
-- To create an admin, call `POST /api/admins` as an existing admin user.
-- For local development, you may also update the database directly to add `ROLE_ADMIN` to an existing user, but this should not be the normal application flow.
+Request (first password change — no current password required):
 
-### Notes and next steps
+```bash
+curl -X POST http://localhost:8080/api/admin/change-password \
+  -H "Authorization: Bearer <jwt-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "newPassword": "NewSecurePassword123"
+  }'
+```
 
-- The `AuthService.register` assigns `ROLE_USER` by default, so regular users cannot become admins through normal signup.
-- Admin-only actions are enforced by checking `ROLE_ADMIN` on the authenticated principal.
-- Tests: `AdminServiceTest` and `AdminControllerTest` cover the dedicated admin creation and role-based behavior.
+Request (subsequent password changes — current password required):
+
+```bash
+curl -X POST http://localhost:8080/api/admin/change-password \
+  -H "Authorization: Bearer <jwt-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "currentPassword": "NewSecurePassword123",
+    "newPassword": "AnotherSecurePassword456"
+  }'
+```
+
+Expected response:
+
+```
+Password updated
+```
+
+---
+
+### 8.4 View All Users
+
+**Endpoint:** `GET /api/admin/users`
+
+Description: Lists all users in the system with their loans.
+
+Request:
+
+```bash
+curl -X GET http://localhost:8080/api/admin/users \
+  -H "Authorization: Bearer <jwt-token>"
+```
+
+Expected response:
+
+```json
+[
+  {
+    "id": 2,
+    "fullName": "Alice Mwangi",
+    "email": "alice@example.com",
+    "phoneNumber": "+254700000000",
+    "loansLent": [...],
+    "loansBorrowed": [...]
+  }
+]
+```
+
+---
+
+### 8.5 Reset User Password
+
+**Endpoint:** `POST /api/admin/users/{id}/reset-password`
+
+Description: Admin sets a new password for a user. Password is hashed with BCrypt.
+
+Request:
+
+```bash
+curl -X POST http://localhost:8080/api/admin/users/2/reset-password \
+  -H "Authorization: Bearer <jwt-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"password": "NewUserPassword123"}'
+```
+
+Expected response:
+
+```json
+{
+  "message": "New password created",
+  "password": "NewUserPassword123"
+}
+```
+
+---
+
+### 8.6 Delete User
+
+**Endpoint:** `DELETE /api/admin/users/{id}`
+
+Description: Admin removes a user from the system.
+
+Request:
+
+```bash
+curl -X DELETE http://localhost:8080/api/admin/users/2 \
+  -H "Authorization: Bearer <jwt-token>"
+```
+
+Expected response:
+
+```
+204 No Content
+```
+
+---
+
+### Default Admin Account
+
+On first startup, if no admin exists, the system automatically creates:
+
+- **Email:** `admin@localhost` (override with `app.admin.email` env var)
+- **Password:** `admin` (override with `app.admin.password` env var)
+- **Phone:** `0000000000` (override with `app.admin.phone` env var)
+- **Status:** `mustChangePassword = true`
+
+The admin must log in and change the password via `POST /api/admin/change-password`.
+
+---
+
+### Security
+
+- All admin endpoints require a valid JWT with `ROLE_ADMIN` authority.
+- Passwords are hashed with BCrypt (industry-standard).
+- Legacy SHA-256 hashed passwords (from older deployments) are transparently migrated to BCrypt on login.
+- The system enforces a **single admin account** — new admins cannot be created via the API once initialized.
+- Admin operations are role-based: the `TokenAuthenticationFilter` reads the `roles` field from the `app_user` table and grants `ROLE_ADMIN` authority.
 

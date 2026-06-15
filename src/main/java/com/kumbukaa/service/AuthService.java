@@ -31,6 +31,7 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final LoanClaimService loanClaimService;
     private final Random random;
+    private final org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder passwordEncoder = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
 
     public AuthService(UserRepository userRepository, OtpCodeRepository otpCodeRepository, EmailService emailService, JwtTokenProvider jwtTokenProvider, LoanClaimService loanClaimService) {
         this.userRepository = userRepository;
@@ -59,12 +60,13 @@ public class AuthService {
         }
 
         User user = User.builder()
-                .fullName(request.getName().trim())
-                .email(email)
-                .phoneNumber(normalizedPhone)
-            .passwordHash(hashPassword(request.getPassword()))
+            .fullName(request.getName().trim())
+            .email(email)
+            .phoneNumber(normalizedPhone)
+            .passwordHash(passwordEncoder.encode(request.getPassword()))
             .roles("ROLE_USER")
-                .build();
+            .mustChangePassword(false)
+            .build();
 
         User savedUser = userRepository.save(user);
         loanClaimService.claimCounterpartyLoans(savedUser);
@@ -85,7 +87,7 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
 
-        if (!hashPassword(request.getPassword()).equals(user.getPasswordHash())) {
+        if (!verifyPasswordAndMigrate(user, request.getPassword())) {
             throw new IllegalArgumentException("Invalid email or password");
         }
 
@@ -108,7 +110,7 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
 
-        if (!hashPassword(request.getPassword()).equals(user.getPasswordHash())) {
+        if (!verifyPasswordAndMigrate(user, request.getPassword())) {
             throw new IllegalArgumentException("Invalid email or password");
         }
 
@@ -117,11 +119,16 @@ public class AuthService {
             throw new IllegalArgumentException("User is not authorized as an admin");
         }
 
+        String message = "Admin login successful";
+        if (Boolean.TRUE.equals(user.getMustChangePassword())) {
+            message = "Admin login successful - password change required";
+        }
+
         return new AuthResponse(
                 user.getId(),
                 user.getEmail(),
                 user.getFullName(),
-                "Admin login successful",
+                message,
                 jwtTokenProvider.createAccessToken(user),
                 jwtTokenProvider.createRefreshToken(user)
         );
@@ -181,6 +188,35 @@ public class AuthService {
         );
     }
 
+    /**
+     * Verifies a raw password against the stored password hash.
+     * Supports BCrypt hashes and legacy SHA-256 hex hashes. When a legacy
+     * hash is detected and the password verifies, the stored password is
+     * migrated to BCrypt.
+     */
+    private boolean verifyPasswordAndMigrate(User user, String rawPassword) {
+        String stored = user.getPasswordHash();
+        if (stored == null) return false;
+
+        // If BCrypt
+        try {
+            if (passwordEncoder.matches(rawPassword, stored)) {
+                return true;
+            }
+        } catch (Exception ignored) {
+        }
+
+        // Fallback: check legacy SHA-256 hex
+        String sha = computeSha256Hex(rawPassword);
+        if (sha.equalsIgnoreCase(stored)) {
+            // migrate to BCrypt
+            user.setPasswordHash(passwordEncoder.encode(rawPassword));
+            userRepository.save(user);
+            return true;
+        }
+        return false;
+    }
+
     private void validateRegisterRequest(RegisterRequest request) {
         if (request == null
                 || request.getName() == null || request.getName().isBlank()
@@ -217,22 +253,18 @@ public class AuthService {
         return code.trim();
     }
 
-    private String hashPassword(String password) {
+    private String computeSha256Hex(String password) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hashedBytes = digest.digest(password.getBytes(StandardCharsets.UTF_8));
-            return bytesToHex(hashedBytes);
+            StringBuilder builder = new StringBuilder();
+            for (byte b : hashedBytes) {
+                builder.append(String.format("%02x", b));
+            }
+            return builder.toString();
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("Unable to hash password", e);
         }
-    }
-
-    private String bytesToHex(byte[] bytes) {
-        StringBuilder builder = new StringBuilder();
-        for (byte b : bytes) {
-            builder.append(String.format("%02x", b));
-        }
-        return builder.toString();
     }
 
 }
