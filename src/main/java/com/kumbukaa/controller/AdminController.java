@@ -47,6 +47,16 @@ public class AdminController {
         return ResponseEntity.ok(adminService.listAllUsersWithLoans());
     }
 
+    @GetMapping("/admin/users/{id}")
+    public ResponseEntity<UserAdminDto> getUserById(@PathVariable Long id) {
+        if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        try {
+            return ResponseEntity.ok(adminService.getUserById(id));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
     @PostMapping("/admin/users/{id}/reset-password")
     public ResponseEntity<ResetPasswordResponse> resetUserPassword(@PathVariable Long id, @RequestBody ResetPasswordRequest request) {
         if (request == null || request.getPassword() == null || request.getPassword().isBlank()) {

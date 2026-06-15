@@ -30,22 +30,30 @@ public class AdminService {
 
     public List<UserAdminDto> listAllUsersWithLoans() {
         List<User> users = userRepository.findAll();
-        return users.stream().map(user -> {
-            List<LoanResponse> lent = lentRepository.findAllByUserId(user.getId()).stream()
-                    .map(LoanResponseMapper::toResponse)
-                    .collect(Collectors.toList());
-            List<LoanResponse> borrowed = borrowedRepository.findAllByUserId(user.getId()).stream()
-                    .map(LoanResponseMapper::toResponse)
-                    .collect(Collectors.toList());
-            return UserAdminDto.builder()
-                    .id(user.getId())
-                    .fullName(user.getFullName())
-                    .email(user.getEmail())
-                    .phoneNumber(user.getPhoneNumber())
-                    .loansLent(lent)
-                    .loansBorrowed(borrowed)
-                    .build();
-        }).collect(Collectors.toList());
+        return users.stream().map(this::toUserAdminDto).collect(Collectors.toList());
+    }
+
+    public UserAdminDto getUserById(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return toUserAdminDto(user);
+    }
+
+    private UserAdminDto toUserAdminDto(User user) {
+        List<LoanResponse> lent = lentRepository.findAllByUserId(user.getId()).stream()
+                .map(LoanResponseMapper::toResponse)
+                .collect(Collectors.toList());
+        List<LoanResponse> borrowed = borrowedRepository.findAllByUserId(user.getId()).stream()
+                .map(LoanResponseMapper::toResponse)
+                .collect(Collectors.toList());
+        return UserAdminDto.builder()
+                .id(user.getId())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
+                .loansLent(lent)
+                .loansBorrowed(borrowed)
+                .build();
     }
 
     public User createAdminUser(String fullName, String email, String phoneNumber, String password) {

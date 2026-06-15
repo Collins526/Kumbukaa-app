@@ -487,7 +487,35 @@ Expected response:
 
 ---
 
-### 8.5 Reset User Password
+### 8.5 Get User by ID
+
+**Endpoint:** `GET /api/admin/users/{id}`
+
+Description: Admin retrieves a single user with loan details.
+
+Request:
+
+```bash
+curl -X GET http://localhost:8080/api/admin/users/2 \
+  -H "Authorization: Bearer <jwt-token>"
+```
+
+Expected response:
+
+```json
+{
+  "id": 2,
+  "fullName": "Alice Mwangi",
+  "email": "alice@example.com",
+  "phoneNumber": "+254700000000",
+  "loansLent": [...],
+  "loansBorrowed": [...]
+}
+```
+
+---
+
+### 8.6 Reset User Password
 
 **Endpoint:** `POST /api/admin/users/{id}/reset-password`
 
@@ -513,7 +541,7 @@ Expected response:
 
 ---
 
-### 8.6 Delete User
+### 8.7 Delete User
 
 **Endpoint:** `DELETE /api/admin/users/{id}`
 
@@ -528,8 +556,10 @@ curl -X DELETE http://localhost:8080/api/admin/users/2 \
 
 Expected response:
 
-```
-204 No Content
+```json
+{
+  "message": "user deleted successfully"
+}
 ```
 
 ---
