@@ -1,7 +1,7 @@
 package com.kumbukaa.controller;
 
 import com.kumbukaa.config.JwtTokenProvider;
-import com.kumbukaa.dto.UserAdminDto;
+import com.kumbukaa.dto.UserSummaryDto;
 import com.kumbukaa.entity.User;
 import com.kumbukaa.service.AdminService;
 import com.kumbukaa.service.AuthService;
@@ -28,7 +28,7 @@ class AdminControllerTest {
         AdminService svc = mock(AdminService.class);
         AuthService authService = mock(AuthService.class);
         JwtTokenProvider tokenProvider = mock(JwtTokenProvider.class);
-        when(svc.listAllUsersWithLoans()).thenReturn(List.of(new UserAdminDto()));
+        when(svc.listAllUsersWithLoans()).thenReturn(List.of(new UserSummaryDto()));
 
         AdminController controller = new AdminController(svc, authService, tokenProvider);
         User admin = User.builder().id(5L).email("admin@example.com").roles("ROLE_ADMIN").build();

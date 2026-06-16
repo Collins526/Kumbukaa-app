@@ -1,11 +1,7 @@
 package com.kumbukaa.service;
 
-import com.kumbukaa.dto.LoanResponse;
-import com.kumbukaa.dto.UserAdminDto;
+import com.kumbukaa.dto.UserSummaryDto;
 import com.kumbukaa.entity.User;
-import com.kumbukaa.mapper.LoanResponseMapper;
-import com.kumbukaa.repository.LoanBorrowedRepository;
-import com.kumbukaa.repository.LoanLentRepository;
 import com.kumbukaa.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,40 +15,28 @@ import java.util.stream.Collectors;
 public class AdminService {
 
     private final UserRepository userRepository;
-    private final LoanLentRepository lentRepository;
-    private final LoanBorrowedRepository borrowedRepository;
 
-    public AdminService(UserRepository userRepository, LoanLentRepository lentRepository, LoanBorrowedRepository borrowedRepository) {
+    public AdminService(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.lentRepository = lentRepository;
-        this.borrowedRepository = borrowedRepository;
     }
 
-    public List<UserAdminDto> listAllUsersWithLoans() {
+    public List<UserSummaryDto> listAllUsersWithLoans() {
         List<User> users = userRepository.findAll();
-        return users.stream().map(this::toUserAdminDto).collect(Collectors.toList());
+        return users.stream().map(this::toUserSummaryDto).collect(Collectors.toList());
     }
 
-    public UserAdminDto getUserById(Long userId) {
+    public UserSummaryDto getUserById(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        return toUserAdminDto(user);
+        return toUserSummaryDto(user);
     }
 
-    private UserAdminDto toUserAdminDto(User user) {
-        List<LoanResponse> lent = lentRepository.findAllByUserId(user.getId()).stream()
-                .map(LoanResponseMapper::toResponse)
-                .collect(Collectors.toList());
-        List<LoanResponse> borrowed = borrowedRepository.findAllByUserId(user.getId()).stream()
-                .map(LoanResponseMapper::toResponse)
-                .collect(Collectors.toList());
-        return UserAdminDto.builder()
+    private UserSummaryDto toUserSummaryDto(User user) {
+        return UserSummaryDto.builder()
                 .id(user.getId())
                 .fullName(user.getFullName())
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
-                .loansLent(lent)
-                .loansBorrowed(borrowed)
                 .build();
     }
 

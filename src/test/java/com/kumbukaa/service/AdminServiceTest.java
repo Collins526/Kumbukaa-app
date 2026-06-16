@@ -1,10 +1,6 @@
 package com.kumbukaa.service;
 
-import com.kumbukaa.dto.LoanResponse;
-import com.kumbukaa.entity.LoanLent;
 import com.kumbukaa.entity.User;
-import com.kumbukaa.repository.LoanBorrowedRepository;
-import com.kumbukaa.repository.LoanLentRepository;
 import com.kumbukaa.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -31,8 +27,6 @@ class AdminServiceTest {
     @Test
     void listAllUsersWithLoans_returnsMappedUsers() {
         UserRepository userRepository = mock(UserRepository.class);
-        LoanLentRepository lentRepository = mock(LoanLentRepository.class);
-        LoanBorrowedRepository borrowedRepository = mock(LoanBorrowedRepository.class);
 
         User user = User.builder()
                 .id(1L)
@@ -43,43 +37,28 @@ class AdminServiceTest {
 
         when(userRepository.findAll()).thenReturn(List.of(user));
 
-        LoanLent lent = LoanLent.builder()
-                .id(10L)
-                .personName("Bob")
-                .phoneNumber("+254700000002")
-                .amountLent(1000.0)
-                .amountPaid(100.0)
-                .balance(900.0)
-                .build();
-
-        when(lentRepository.findAllByUserId(1L)).thenReturn(List.of(lent));
-        when(borrowedRepository.findAllByUserId(1L)).thenReturn(List.of());
-
-        AdminService svc = new AdminService(userRepository, lentRepository, borrowedRepository);
+        AdminService svc = new AdminService(userRepository);
 
         List<?> results = svc.listAllUsersWithLoans();
         assertNotNull(results);
         assertEquals(1, results.size());
         Object first = results.get(0);
-        assertTrue(first instanceof com.kumbukaa.dto.UserAdminDto);
-        com.kumbukaa.dto.UserAdminDto dto = (com.kumbukaa.dto.UserAdminDto) first;
+        assertTrue(first instanceof com.kumbukaa.dto.UserSummaryDto);
+        com.kumbukaa.dto.UserSummaryDto dto = (com.kumbukaa.dto.UserSummaryDto) first;
         assertEquals(1L, dto.getId());
         assertEquals("Alice", dto.getFullName());
-        List<LoanResponse> lentList = dto.getLoansLent();
-        assertEquals(1, lentList.size());
-        assertEquals(1000.0, lentList.get(0).getLoanAmount());
+        assertEquals("alice@example.com", dto.getEmail());
+        assertEquals("+254700000001", dto.getPhoneNumber());
     }
 
     @Test
     void resetUserPassword_hashesAndSaves() throws Exception {
         UserRepository userRepository = mock(UserRepository.class);
-        LoanLentRepository lentRepository = mock(LoanLentRepository.class);
-        LoanBorrowedRepository borrowedRepository = mock(LoanBorrowedRepository.class);
 
         User existing = User.builder().id(2L).email("bob@example.com").passwordHash("oldhash").build();
         when(userRepository.findById(2L)).thenReturn(Optional.of(existing));
 
-        AdminService svc = new AdminService(userRepository, lentRepository, borrowedRepository);
+        AdminService svc = new AdminService(userRepository);
         svc.resetUserPassword(2L, "newpass123");
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
@@ -93,12 +72,10 @@ class AdminServiceTest {
     @Test
     void createAdminUser_persistsAdminRole() {
         UserRepository userRepository = mock(UserRepository.class);
-        LoanLentRepository lentRepository = mock(LoanLentRepository.class);
-        LoanBorrowedRepository borrowedRepository = mock(LoanBorrowedRepository.class);
 
         when(userRepository.findByEmail("admin@example.com")).thenReturn(Optional.empty());
 
-        AdminService svc = new AdminService(userRepository, lentRepository, borrowedRepository);
+        AdminService svc = new AdminService(userRepository);
         svc.createAdminUser("Admin User", "admin@example.com", "+254700000000", "SecurePassword123");
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);

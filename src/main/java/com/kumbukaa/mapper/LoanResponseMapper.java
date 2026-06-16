@@ -53,7 +53,7 @@ public final class LoanResponseMapper {
     }
 
     private static OffsetDateTime resolveDueDate(PersonalLoanStatus status, LocalDate dueDate) {
-        if (status == PersonalLoanStatus.PAID || dueDate == null) {
+        if (dueDate == null) {
             return null;
         }
         return dueDate.atStartOfDay().atOffset(ZoneOffset.UTC);
@@ -65,6 +65,7 @@ public final class LoanResponseMapper {
         }
         return payments.stream()
                 .filter(payment -> payment != null)
+                .sorted(Comparator.comparing(LoanPayment::getPaymentDate, Comparator.nullsLast(Comparator.reverseOrder())))
                 .map(payment -> PaymentSummary.builder()
                         .amount(payment.getAmount())
                         .paymentDate(payment.getPaymentDate() != null ? payment.getPaymentDate().atOffset(ZoneOffset.UTC) : null)

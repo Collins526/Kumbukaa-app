@@ -380,11 +380,11 @@ Login as an admin user.
 
 ### GET /api/admin/users
 
-Get a list of all users along with their loan statistics. Requires admin privileges.
+Get a list of all users with summary details. Requires admin privileges.
 
 #### Response
 - `200 OK`
-- Returns an array of `UserAdminDto` objects.
+- Returns an array of `UserSummaryDto` objects.
 - `403 Forbidden` if not an admin.
 
 ### POST /api/admin/users/{id}/reset-password
