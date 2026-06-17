@@ -7,6 +7,7 @@ import com.kumbukaa.dto.AuthResponse;
 import com.kumbukaa.dto.LoginRequest;
 import com.kumbukaa.dto.MessageResponse;
 import com.kumbukaa.dto.ResetPasswordResponse;
+import com.kumbukaa.dto.UserDetailDto;
 import com.kumbukaa.dto.UserSummaryDto;
 import com.kumbukaa.entity.User;
 import com.kumbukaa.service.AdminService;
@@ -48,7 +49,7 @@ public class AdminController {
     }
 
     @GetMapping("/admin/users/{id}")
-    public ResponseEntity<UserSummaryDto> getUserById(@PathVariable Long id) {
+    public ResponseEntity<UserDetailDto> getUserById(@PathVariable Long id) {
         if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         try {
             return ResponseEntity.ok(adminService.getUserById(id));

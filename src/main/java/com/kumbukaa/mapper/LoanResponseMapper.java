@@ -35,6 +35,21 @@ public final class LoanResponseMapper {
                 .build();
     }
 
+    public static com.kumbukaa.dto.LoanSummaryResponse toSummaryResponse(LoanLent loan) {
+        return com.kumbukaa.dto.LoanSummaryResponse.builder()
+                .id(loan.getId())
+                .loanAmount(loan.getAmountLent())
+                .amountPaid(resolveAmountPaid(loan.getAmountPaid()))
+                .balance(loan.getBalance())
+                .personName(loan.getPersonName())
+                .phoneNumber(loan.getPhoneNumber())
+                .dateLent(resolveDate(loan.getDateLent()))
+                .dueDate(resolveDueDate(loan.getStatus(), loan.getDueDate()))
+                .status(resolveStatus(loan.getStatus()))
+                .notes(loan.getNotes())
+                .build();
+    }
+
     public static LoanResponse toResponse(LoanBorrowed loan) {
         return LoanResponse.builder()
                 .id(loan.getId())
@@ -49,6 +64,21 @@ public final class LoanResponseMapper {
                 .status(resolveStatus(loan.getStatus()))
                 .notes(loan.getNotes())
                 .installments(resolveInstallments(loan.getPayments()))
+                .build();
+    }
+
+    public static com.kumbukaa.dto.LoanSummaryResponse toSummaryResponse(LoanBorrowed loan) {
+        return com.kumbukaa.dto.LoanSummaryResponse.builder()
+                .id(loan.getId())
+                .loanAmount(loan.getAmountBorrowed())
+                .amountPaid(resolveAmountPaid(loan.getAmountPaid()))
+                .balance(loan.getBalance())
+                .personName(loan.getPersonName())
+                .phoneNumber(loan.getPhoneNumber())
+                .dateBorrowed(resolveDate(loan.getDateBorrowed()))
+                .dueDate(resolveDueDate(loan.getStatus(), loan.getDueDate()))
+                .status(resolveStatus(loan.getStatus()))
+                .notes(loan.getNotes())
                 .build();
     }
 

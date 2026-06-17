@@ -7,17 +7,24 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.OffsetDateTime;
+
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class UserSummaryDto {
+public class LoanSummaryResponse {
     private Long id;
-    private String fullName;
-    private String email;
+    private Double loanAmount;
+    private Double amountPaid;
+    private Double balance;
+    private String personName;
     private String phoneNumber;
-    private Long loansLent;
-    private Long loansBorrowed;
+    private OffsetDateTime dateLent;
+    private OffsetDateTime dateBorrowed;
+    private OffsetDateTime dueDate;
+    private String status;
+    private String notes;
 }
