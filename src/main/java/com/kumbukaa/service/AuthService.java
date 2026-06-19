@@ -9,8 +9,10 @@ import com.kumbukaa.dto.RegisterRequest;
 import com.kumbukaa.entity.OtpCode;
 import com.kumbukaa.entity.User;
 import com.kumbukaa.repository.OtpCodeRepository;
+import com.kumbukaa.event.OtpRequestedEvent;
 import com.kumbukaa.repository.UserRepository;
 import com.kumbukaa.util.PhoneNumberUtils;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,15 +32,17 @@ public class AuthService {
     private final EmailService emailService;
     private final JwtTokenProvider jwtTokenProvider;
     private final LoanClaimService loanClaimService;
+    private final ApplicationEventPublisher eventPublisher;
     private final Random random;
     private final org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder passwordEncoder = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
 
-    public AuthService(UserRepository userRepository, OtpCodeRepository otpCodeRepository, EmailService emailService, JwtTokenProvider jwtTokenProvider, LoanClaimService loanClaimService) {
+    public AuthService(UserRepository userRepository, OtpCodeRepository otpCodeRepository, EmailService emailService, JwtTokenProvider jwtTokenProvider, LoanClaimService loanClaimService, ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.otpCodeRepository = otpCodeRepository;
         this.emailService = emailService;
         this.jwtTokenProvider = jwtTokenProvider;
         this.loanClaimService = loanClaimService;
+        this.eventPublisher = eventPublisher;
         this.random = new Random();
     }
 
@@ -152,7 +156,7 @@ public class AuthService {
                 .build();
 
         otpCodeRepository.save(otpCode);
-        emailService.sendOtpEmail(email, code);
+        eventPublisher.publishEvent(new OtpRequestedEvent(email, code));
         return "OTP has been sent to the email.";
     }
 

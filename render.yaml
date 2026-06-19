@@ -30,11 +30,11 @@ services:
       - key: SPRING_MAIL_PASSWORD
         description: Email password or app password for notifications
         sync: false
-      - key: SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH
+      - key: SPRING_MAIL_SMTP_AUTH
         value: "true"
         description: SMTP auth enabled
         sync: false
-      - key: SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE
+      - key: SPRING_MAIL_STARTTLS_ENABLE
         value: "true"
         description: SMTP STARTTLS enabled
         sync: false
