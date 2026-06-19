@@ -11,7 +11,7 @@ public class CorsConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(@NonNull CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOriginPatterns("http://localhost:*", "http://127.0.0.1:*", "https://*.onrender.com", "https://kumbukaa-app.onrender.com", "https://app.kumbuka.local", "https://portal.kumbuka.local")
+                .allowedOriginPatterns("http://localhost:*", "http://127.0.0.1:*", "https://*.onrender.com", "https://kumbukaa-app.onrender.com", "http://app.kumbuka.local", "http://portal.kumbuka.local")
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true)
