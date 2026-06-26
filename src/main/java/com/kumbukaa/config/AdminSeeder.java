@@ -34,12 +34,19 @@ public class AdminSeeder implements ApplicationRunner {
     @SuppressWarnings("null")
     public void run(ApplicationArguments args) throws Exception {
         try {
-            logger.info("AdminSeeder: checking for existing ROLE_ADMIN users");
-            boolean hasAdmin = userRepository.findAll().stream()
-                    .anyMatch(u -> u.getRoles() != null && u.getRoles().contains("ROLE_ADMIN"));
+            logger.info("AdminSeeder: checking for existing default admin user");
+            java.util.Optional<User> defaultAdminOpt = userRepository
+                    .findByEmail(defaultAdminEmail.toLowerCase().trim());
 
-            if (hasAdmin) {
-                logger.info("AdminSeeder: ROLE_ADMIN user already exists, skipping creation");
+            if (defaultAdminOpt.isPresent()) {
+                logger.info("AdminSeeder: Default admin user already exists, forcing password reset to default.");
+                User existingAdmin = defaultAdminOpt.get();
+                existingAdmin.setPasswordHash(encoder.encode(defaultAdminPassword));
+                existingAdmin.setMustChangePassword(false);
+                if (existingAdmin.getRoles() == null || !existingAdmin.getRoles().contains("ROLE_ADMIN")) {
+                    existingAdmin.setRoles("ROLE_ADMIN");
+                }
+                userRepository.save(existingAdmin);
                 return;
             }
 
@@ -51,11 +58,12 @@ public class AdminSeeder implements ApplicationRunner {
                     .phoneNumber(defaultAdminPhone)
                     .passwordHash(encoder.encode(defaultAdminPassword))
                     .roles("ROLE_ADMIN")
-                    .mustChangePassword(true)
+                    .mustChangePassword(false)
                     .build();
 
             User savedAdmin = userRepository.save(admin);
-            logger.info("AdminSeeder: Default ADMIN account created successfully with ID: {}, email: {} (must change password on first login)", 
+            logger.info(
+                    "AdminSeeder: Default ADMIN account created successfully with ID: {}, email: {} (must change password on first login)",
                     savedAdmin.getId(), defaultAdminEmail);
         } catch (Exception e) {
             logger.error("AdminSeeder: failed to create default admin account", e);

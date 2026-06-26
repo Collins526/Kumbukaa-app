@@ -73,7 +73,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
                 List<org.springframework.security.core.GrantedAuthority> authorities = Collections.emptyList();
                 if (roles != null && !roles.isBlank()) {
                     authorities = Arrays.stream(roles.split(","))
-                        .map(String::trim)
+                        .map(s -> s.trim())
                         .filter(s -> !s.isBlank())
                         .map(org.springframework.security.core.authority.SimpleGrantedAuthority::new)
                         .collect(Collectors.toList());

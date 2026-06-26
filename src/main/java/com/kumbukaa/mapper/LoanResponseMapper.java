@@ -95,7 +95,7 @@ public final class LoanResponseMapper {
         }
         return payments.stream()
                 .filter(payment -> payment != null)
-                .sorted(Comparator.comparing(LoanPayment::getPaymentDate, Comparator.nullsLast(Comparator.reverseOrder())))
+                .sorted(Comparator.comparing(payment -> payment.getPaymentDate(), Comparator.nullsLast(Comparator.reverseOrder())))
                 .map(payment -> PaymentSummary.builder()
                         .amount(payment.getAmount())
                         .paymentDate(payment.getPaymentDate() != null ? payment.getPaymentDate().atOffset(ZoneOffset.UTC) : null)
@@ -118,7 +118,7 @@ public final class LoanResponseMapper {
             return null;
         }
         return payments.stream()
-                .map(LoanPayment::getPaymentDate)
+                .map(payment -> payment.getPaymentDate())
                 .filter(date -> date != null)
                 .max(Comparator.naturalOrder())
                 .map(date -> date.atOffset(ZoneOffset.UTC))
