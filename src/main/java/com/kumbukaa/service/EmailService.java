@@ -33,41 +33,59 @@ public class EmailService {
     }
 
     public void sendOtpEmail(String to, String code) {
+        String body = String.format("Your one-time password is %s. It expires in 10 minutes.", code);
         if (resendApiKey != null && !resendApiKey.isBlank()) {
-            sendViaResend(to, code);
+            sendViaResend(to, "Your Kumbukaa OTP Code", body);
             return;
         }
 
         if (smtpFromEmail != null && !smtpFromEmail.isBlank()) {
-            sendViaSmtp(to, code);
+            sendViaSmtp(to, "Your Kumbukaa OTP Code", body);
             return;
         }
 
         throw new MailSendException("No valid email provider configured.");
     }
 
-    private void sendViaSmtp(String to, String code) {
+    public void sendPasswordResetOtpEmail(String to, String userName, String code) {
+        String name = (userName == null || userName.isBlank()) ? "there" : userName;
+        String body = String.format("Hello %s,\n\nYou requested to reset your Kumbukaa account password.\n\nYour verification code is:\n\n%s\n\nThis code expires in 10 minutes.\n\nIf you did not request this password reset, please ignore this email.", name, code);
+
+        if (resendApiKey != null && !resendApiKey.isBlank()) {
+            sendViaResend(to, "Password Reset Verification Code", body);
+            return;
+        }
+
+        if (smtpFromEmail != null && !smtpFromEmail.isBlank()) {
+            sendViaSmtp(to, "Password Reset Verification Code", body);
+            return;
+        }
+
+        throw new MailSendException("No valid email provider configured.");
+    }
+
+    private void sendViaSmtp(String to, String subject, String body) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(smtpFromEmail);
         message.setTo(to);
-        message.setSubject("Your Kumbukaa OTP Code");
-        message.setText(String.format("Your one-time password is %s. It expires in 10 minutes.", code));
+        message.setSubject(subject);
+        message.setText(body);
         mailSender.send(message);
     }
 
-    private void sendViaResend(String to, String code) {
+    private void sendViaResend(String to, String subject, String body) {
         if (resendApiKey == null || resendApiKey.isBlank()) {
             throw new MailSendException("Resend API key is not configured.");
         }
 
-        String body = String.format("{\"from\":\"%s\",\"to\":[\"%s\"],\"subject\":\"Your Kumbukaa OTP Code\",\"text\":\"Your one-time password is %s. It expires in 10 minutes.\"}",
-                resendFromEmail, to, code);
+        String payload = String.format("{\"from\":\"%s\",\"to\":[\"%s\"],\"subject\":\"%s\",\"text\":\"%s\"}",
+                resendFromEmail, to, subject, body.replace("\n", "\\n"));
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("https://api.resend.com/emails"))
                 .header("Authorization", "Bearer " + resendApiKey)
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .POST(HttpRequest.BodyPublishers.ofString(payload))
                 .build();
 
         try {

@@ -5,9 +5,23 @@ services:
     dockerfilePath: ./Dockerfile
     envVars:
       - key: SPRING_DATASOURCE_URL
+        value: jdbc:postgresql://aws-0-eu-north-1.pooler.supabase.com:6543/postgres?sslmode=require
         description: JDBC connection URL for production database
         sync: false
+      - key: SPRING_DATASOURCE_HOST
+        value: aws-0-eu-north-1.pooler.supabase.com
+        description: Supabase Postgres host
+        sync: false
+      - key: SPRING_DATASOURCE_PORT
+        value: "6543"
+        description: Supabase Postgres port
+        sync: false
+      - key: SPRING_DATASOURCE_DB
+        value: postgres
+        description: Supabase Postgres database name
+        sync: false
       - key: SPRING_DATASOURCE_USERNAME
+        value: postgres.cpnxdlffzjgvemoptbzz
         description: Database user name for production
         sync: false
       - key: SPRING_DATASOURCE_PASSWORD

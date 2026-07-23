@@ -1,10 +1,14 @@
 package com.kumbukaa.controller;
 
 import com.kumbukaa.dto.AuthResponse;
+import com.kumbukaa.dto.ForgotPasswordRequest;
 import com.kumbukaa.dto.LoginRequest;
 import com.kumbukaa.dto.LoginWithOtpRequest;
 import com.kumbukaa.dto.OtpRequest;
+import com.kumbukaa.dto.PasswordResetResponse;
 import com.kumbukaa.dto.RegisterRequest;
+import com.kumbukaa.dto.ResetPasswordRequest;
+import com.kumbukaa.dto.VerifyOtpRequest;
 import com.kumbukaa.service.AuthService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -65,5 +69,20 @@ public class AuthController {
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(new AuthResponse(null, null, null, e.getMessage(), null, null));
         }
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<PasswordResetResponse> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        return ResponseEntity.ok(authService.forgotPassword(request));
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<PasswordResetResponse> verifyOtp(@RequestBody VerifyOtpRequest request) {
+        return ResponseEntity.ok(authService.verifyOtp(request));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<PasswordResetResponse> resetPassword(@RequestBody ResetPasswordRequest request) {
+        return ResponseEntity.ok(authService.resetPassword(request));
     }
 }
