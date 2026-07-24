@@ -6,6 +6,7 @@ import com.kumbukaa.dto.LoginRequest;
 import com.kumbukaa.dto.LoginWithOtpRequest;
 import com.kumbukaa.dto.OtpRequest;
 import com.kumbukaa.dto.PasswordResetResponse;
+import com.kumbukaa.dto.VerifyOtpResponse;
 import com.kumbukaa.dto.RegisterRequest;
 import com.kumbukaa.dto.ResetPasswordRequest;
 import com.kumbukaa.dto.VerifyOtpRequest;
@@ -77,7 +78,7 @@ public class AuthController {
     }
 
     @PostMapping("/verify-otp")
-    public ResponseEntity<PasswordResetResponse> verifyOtp(@RequestBody VerifyOtpRequest request) {
+    public ResponseEntity<VerifyOtpResponse> verifyOtp(@RequestBody VerifyOtpRequest request) {
         return ResponseEntity.ok(authService.verifyOtp(request));
     }
 

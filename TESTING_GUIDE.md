@@ -14,6 +14,23 @@ The API should be available at:
 http://localhost:8080
 ```
 
+### Environment setup
+
+The app now reads its database settings from the local `.env` file or deployment environment variables. For local development, ensure the following are present:
+
+```env
+SPRING_DATASOURCE_URL=jdbc:postgresql://aws-0-eu-north-1.pooler.supabase.com:6543/postgres?sslmode=require
+SPRING_DATASOURCE_HOST=aws-0-eu-north-1.pooler.supabase.com
+SPRING_DATASOURCE_PORT=6543
+SPRING_DATASOURCE_DB=postgres
+SPRING_DATASOURCE_USERNAME=postgres.cpnxdlffzjgvemoptbzz
+SPRING_DATASOURCE_PASSWORD=<your-supabase-password>
+
+# Optional but recommended for Supabase/pgbouncer compatibility to avoid
+# prepared statement errors such as "prepared statement already exists"
+SPRING_DATASOURCE_HIKARI_DATA_SOURCE_PROPERTIES_PREPARETHRESHOLD=0
+```
+
 ---
 
 ## 2. Test tools
@@ -104,6 +121,82 @@ Expected response:
 ```
 
 The OTP is sent to the registered email address. The response no longer includes the OTP code.
+
+### Forgot password
+
+POST `/api/auth/forgot-password`
+
+```bash
+curl -X POST http://localhost:8080/api/auth/forgot-password \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "alice@example.com"
+  }'
+```
+
+Expected responses:
+
+If the account exists:
+
+```json
+{
+  "message": "a verification code has been sent"
+}
+```
+
+If the account does not exist:
+
+```json
+{
+  "message": "account does not exist"
+}
+```
+
+### Verify OTP for password reset
+
+POST `/api/auth/verify-otp`
+
+```bash
+curl -X POST http://localhost:8080/api/auth/verify-otp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "alice@example.com",
+    "otp": "123456"
+  }'
+```
+
+Expected response:
+
+```json
+{
+  "resetToken": "<uuid-or-token>",
+  "message": "OTP verified successfully."
+}
+```
+
+### Reset password
+
+POST `/api/auth/reset-password`
+
+```bash
+curl -X POST http://localhost:8080/api/auth/reset-password \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resetToken": "<token-from-verify-otp>",
+    "newPassword": "Password@123",
+    "confirmPassword": "Password@123"
+  }'
+```
+
+Expected response:
+
+```json
+{
+  "message": "Password reset successfully."
+}
+```
+
+New passwords must meet the project policy: minimum 8 characters, one uppercase, one lowercase, one number, and one special character.
 
 ### Login with OTP
 

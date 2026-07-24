@@ -9,6 +9,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class PasswordResetResponse {
+public class VerifyOtpResponse {
+    private String resetToken;
     private String message;
 }

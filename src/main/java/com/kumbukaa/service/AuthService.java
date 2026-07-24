@@ -7,6 +7,7 @@ import com.kumbukaa.dto.LoginRequest;
 import com.kumbukaa.dto.LoginWithOtpRequest;
 import com.kumbukaa.dto.OtpRequest;
 import com.kumbukaa.dto.PasswordResetResponse;
+import com.kumbukaa.dto.VerifyOtpResponse;
 import com.kumbukaa.dto.RegisterRequest;
 import com.kumbukaa.dto.ResetPasswordRequest;
 import com.kumbukaa.dto.VerifyOtpRequest;
@@ -243,16 +244,17 @@ public class AuthService {
                     .build();
             passwordResetOtpRepository.save(passwordResetOtp);
             emailService.sendPasswordResetOtpEmail(user.getEmail(), user.getFullName(), otp);
+            return new PasswordResetResponse("a verification code has been sent");
         }
 
-        return new PasswordResetResponse(null, "If an account exists, a verification code has been sent.");
+        return new PasswordResetResponse("account does not exist");
     }
 
     /**
      * Verifies a password reset OTP and returns a short-lived reset token when valid.
      */
     @Transactional
-    public PasswordResetResponse verifyOtp(VerifyOtpRequest request) {
+    public VerifyOtpResponse verifyOtp(VerifyOtpRequest request) {
         String email = validateEmail(request.getEmail());
         String otp = validateCode(request.getOtp());
 
@@ -295,7 +297,7 @@ public class AuthService {
                 .build();
         passwordResetTokenRepository.save(resetToken);
 
-        return new PasswordResetResponse(token, "OTP verified successfully.");
+        return new VerifyOtpResponse(token, "OTP verified successfully.");
     }
 
     /**
@@ -333,7 +335,7 @@ public class AuthService {
             passwordResetOtpRepository.save(otp);
         }
 
-        return new PasswordResetResponse(null, "Password reset successfully.");
+        return new PasswordResetResponse("Password reset successfully.");
     }
 
     private String generateSixDigitOtp() {

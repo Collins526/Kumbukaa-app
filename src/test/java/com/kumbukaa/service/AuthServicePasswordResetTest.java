@@ -86,7 +86,7 @@ class AuthServicePasswordResetTest {
 
         var response = authService.forgotPassword(new ForgotPasswordRequest("user@example.com"));
 
-        assertEquals("If an account exists, a verification code has been sent.", response.getMessage());
+        assertEquals("a verification code has been sent", response.getMessage());
         verify(emailService).sendPasswordResetOtpEmail(eq("user@example.com"), eq("Jane Doe"), anyString());
 
         ArgumentCaptor<PasswordResetOtp> otpCaptor = ArgumentCaptor.forClass(PasswordResetOtp.class);
