@@ -83,7 +83,7 @@ public final class LoanResponseMapper {
     }
 
     private static OffsetDateTime resolveDueDate(PersonalLoanStatus status, LocalDate dueDate) {
-        if (dueDate == null) {
+        if (dueDate == null || status == PersonalLoanStatus.PAID) {
             return null;
         }
         return dueDate.atStartOfDay().atOffset(ZoneOffset.UTC);

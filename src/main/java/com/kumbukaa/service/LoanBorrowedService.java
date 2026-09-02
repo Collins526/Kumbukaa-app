@@ -165,11 +165,11 @@ public class LoanBorrowedService {
         if (balance <= 0) {
             return PersonalLoanStatus.PAID;
         }
-        if (dueDate != null && dueDate.isBefore(LocalDate.now())) {
-            return PersonalLoanStatus.OVERDUE;
-        }
         if (amountPaid != null && amountPaid > 0) {
             return PersonalLoanStatus.PARTIALLY_PAID;
+        }
+        if (dueDate != null && dueDate.isBefore(LocalDate.now())) {
+            return PersonalLoanStatus.OVERDUE;
         }
         return PersonalLoanStatus.ACTIVE;
     }

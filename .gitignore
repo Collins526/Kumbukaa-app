@@ -36,3 +36,4 @@ build/
 ### JDK ###
 jdk21/
 jdk21.zip
+*.log
