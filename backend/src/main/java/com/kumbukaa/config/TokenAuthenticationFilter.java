@@ -39,7 +39,6 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
         return request.getMethod().equalsIgnoreCase("OPTIONS")
                 || "/api/auth".equals(path)
                 || path.startsWith("/api/auth/")
-                || "/api/admins".equals(path)
                 || "/api/admin/login".equals(path)
                 || "/health".equals(path)
                 || "/".equals(path);

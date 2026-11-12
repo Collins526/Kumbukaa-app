@@ -20,6 +20,7 @@ public class UserDetailDto {
     private String fullName;
     private String email;
     private String phoneNumber;
+    private Boolean admin;
     private List<LoanResponse> loansLent;
     private List<LoanResponse> loansBorrowed;
 }

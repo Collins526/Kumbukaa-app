@@ -1,5 +1,8 @@
 import type {
   AuthResponse,
+  AdminProfile,
+  AdminUserDetails,
+  AdminUserSummary,
   DashboardSummary,
   Loan,
   LoanInput,
@@ -77,7 +80,11 @@ async function request<T>(
   if (response.status === 204) {
     return undefined as T;
   }
-  return (await response.json()) as T;
+  const contentType = response.headers.get("Content-Type") ?? "";
+  if (contentType.includes("application/json")) {
+    return (await response.json()) as T;
+  }
+  return (await response.text()) as T;
 }
 
 export const api = {
@@ -134,6 +141,49 @@ export const api = {
 
   health() {
     return request<{ status: string }>("/health", {}, false);
+  },
+
+  adminProfile() {
+    return request<AdminProfile>("/api/admin/profile");
+  },
+
+  adminUsers() {
+    return request<AdminUserSummary[]>("/api/admin/users");
+  },
+
+  adminUser(id: number) {
+    return request<AdminUserDetails>(`/api/admin/users/${id}`);
+  },
+
+  resetAdminUserPassword(id: number, password: string) {
+    return request<{ message: string; password: string }>(`/api/admin/users/${id}/reset-password`, {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    });
+  },
+
+  deleteAdminUser(id: number) {
+    return request<{ message: string }>(`/api/admin/users/${id}`, { method: "DELETE" });
+  },
+
+  createAdmin(input: {
+    fullName: string;
+    email: string;
+    phoneNumber: string;
+    password: string;
+    confirmPassword: string;
+  }) {
+    return request<AuthResponse>("/api/admins", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
+  changeAdminPassword(input: { currentPassword?: string; newPassword: string }) {
+    return request<string>("/api/admin/change-password", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
   },
 };
 

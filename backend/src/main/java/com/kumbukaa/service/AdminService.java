@@ -55,6 +55,7 @@ public class AdminService {
                 .phoneNumber(user.getPhoneNumber())
                 .loansLent(lentCount)
                 .loansBorrowed(borrowedCount)
+                .admin(hasAdminRole(user))
                 .build();
     }
 
@@ -74,9 +75,17 @@ public class AdminService {
                 .fullName(user.getFullName())
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
+                .admin(hasAdminRole(user))
                 .loansLent(lentResponses)
                 .loansBorrowed(borrowedResponses)
                 .build();
+    }
+
+    private boolean hasAdminRole(User user) {
+        return user.getRoles() != null
+                && java.util.Arrays.stream(user.getRoles().split(","))
+                .map(String::trim)
+                .anyMatch("ROLE_ADMIN"::equals);
     }
 
     public User createAdminUser(String fullName, String email, String phoneNumber, String password) {
@@ -89,6 +98,7 @@ public class AdminService {
                 .phoneNumber(phoneNumber.trim())
                 .passwordHash(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(password))
                 .roles("ROLE_ADMIN")
+                .mustChangePassword(true)
                 .build();
         return userRepository.save(user);
     }
@@ -98,6 +108,14 @@ public class AdminService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         user.setPasswordHash(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(newPassword));
         userRepository.save(user);
+    }
+
+    public void changeAdminPassword(Long adminId, String newPassword) {
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new IllegalArgumentException("Admin not found"));
+        admin.setPasswordHash(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(newPassword));
+        admin.setMustChangePassword(false);
+        userRepository.save(admin);
     }
 
     public void deleteUser(Long userId) {

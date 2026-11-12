@@ -69,8 +69,9 @@ Track money the user owes to others.
 - `GET /summary`: Returns an aggregated view of the user's financial standing, including total lent, total borrowed, amounts remaining, active loans, and overdue counts.
 
 ### 6.5 Admin Management (`/api/admin`)
-- Accessible only by the default admin (credentials initialized dynamically or via env).
-- Allows the admin to view all users, reset user passwords, delete users, and view system metrics.
+- Administrator login, profile and password management.
+- Admins can view user account details and loan activity, reset user passwords, delete accounts, and create additional admins.
+- Admin creation and account management require an authenticated `ROLE_ADMIN` token.
 
 ## 7. How to Run
 
@@ -85,16 +86,16 @@ Track money the user owes to others.
 
 ## 8. Frontend
 
-The React/Vite frontend is a separate sibling project in `../Kumbukaa-frontend/`. It uses this backend's authentication, dashboard, and loan APIs.
+The React/Vite frontend is in the repository's `frontend/` directory. It uses this backend's authentication, dashboard, loan, and admin APIs. After sign-in, the app checks `GET /api/admin/profile` and renders either the user dashboard or the admin workspace in the same application based on the authenticated role.
 
 1. Start the backend on port `8080` using the steps above.
-2. In a second terminal, change to the sibling frontend folder and run:
+2. In a second terminal, change to the frontend folder and run:
    ```bash
-   cd ..\Kumbukaa-frontend
+   cd ..\frontend
    npm install
-   npm start
+   npm run dev
    ```
-3. Open `http://127.0.0.1:5173`. The development server proxies `/api` and `/health` to the backend. You can also use `npm run dev`.
+3. Open `http://127.0.0.1:5173`. The development server proxies `/api` and `/health` to the backend.
 
 For a separately hosted frontend, copy `.env.example` to `.env.local` in `Kumbukaa-frontend` and set `VITE_API_BASE_URL` to the backend origin. Build and preview the production bundle with `npm run build` and `npm run preview`.
 

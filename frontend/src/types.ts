@@ -15,6 +15,28 @@ export interface AuthResponse {
   refreshToken: string;
 }
 
+export interface AdminProfile {
+  id: number;
+  fullName: string;
+  email: string;
+  mustChangePassword: boolean;
+}
+
+export interface AdminUserSummary {
+  id: number;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  loansLent: number;
+  loansBorrowed: number;
+  admin: boolean;
+}
+
+export interface AdminUserDetails extends Omit<AdminUserSummary, "loansLent" | "loansBorrowed"> {
+  loansLent: Loan[];
+  loansBorrowed: Loan[];
+}
+
 export interface Loan {
   id: number;
   loanAmount: number;

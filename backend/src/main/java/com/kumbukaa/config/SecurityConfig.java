@@ -36,7 +36,7 @@ public class SecurityConfig {
                                 "/api/auth/request-otp",
                                 "/api/auth/login-otp",
                                 "/api/auth/admin/login",
-                                "/api/admins",
+                                "/api/admin/login",
                                 "/health",
                                 "/"
                         ).permitAll()

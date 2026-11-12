@@ -20,4 +20,5 @@ public class UserSummaryDto {
     private String phoneNumber;
     private Long loansLent;
     private Long loansBorrowed;
+    private Boolean admin;
 }

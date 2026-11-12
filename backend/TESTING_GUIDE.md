@@ -440,7 +440,7 @@ Use the above requests as individual Postman examples:
 
 ## 8. Admin Endpoints
 
-This system uses a **single ADMIN account** with no super-admin role or admin management features. The default ADMIN is created automatically on first startup with default credentials that **must be changed** after first login.
+The default ADMIN is created automatically on first startup. Its initial password must be changed after first login. Existing admin credentials are preserved across restarts, and authenticated admins can create additional admin accounts.
 
 ### 8.1 Admin Login
 
@@ -507,7 +507,7 @@ Expected response:
   "id": 1,
   "email": "admin@localhost",
   "fullName": "Administrator",
-  "phoneNumber": "0000000000"
+  "mustChangePassword": true
 }
 ```
 
@@ -572,8 +572,9 @@ Expected response:
     "fullName": "Alice Mwangi",
     "email": "alice@example.com",
     "phoneNumber": "+254700000000",
-    "loansLent": [...],
-    "loansBorrowed": [...]
+    "loansLent": 2,
+    "loansBorrowed": 1,
+    "admin": false
   }
 ]
 ```
@@ -655,6 +656,25 @@ Expected response:
 }
 ```
 
+### 8.8 Create Admin
+
+**Endpoint:** `POST /api/admins`
+
+Requires a valid administrator access token. The created administrator must change their password after signing in.
+
+```bash
+curl -X POST http://localhost:8080/api/admins \
+  -H "Authorization: Bearer <jwt-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fullName": "New Admin",
+    "email": "admin2@example.com",
+    "phoneNumber": "+254700000001",
+    "password": "SecurePassword123",
+    "confirmPassword": "SecurePassword123"
+  }'
+```
+
 ---
 
 ### Default Admin Account
@@ -675,6 +695,6 @@ The admin must log in and change the password via `POST /api/admin/change-passwo
 - All admin endpoints require a valid JWT with `ROLE_ADMIN` authority.
 - Passwords are hashed with BCrypt (industry-standard).
 - Legacy SHA-256 hashed passwords (from older deployments) are transparently migrated to BCrypt on login.
-- The system enforces a **single admin account** — new admins cannot be created via the API once initialized.
+- Admin accounts can only be created by an authenticated administrator.
 - Admin operations are role-based: the `TokenAuthenticationFilter` reads the `roles` field from the `app_user` table and grants `ROLE_ADMIN` authority.
 

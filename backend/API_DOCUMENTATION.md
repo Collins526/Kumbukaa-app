@@ -380,12 +380,21 @@ Login as an admin user.
 
 ### GET /api/admin/users
 
-Get a list of all users with summary details. Requires admin privileges.
+Get all user and admin accounts with account and loan-count summaries. Requires admin privileges.
 
 #### Response
 - `200 OK`
 - Returns an array of `UserSummaryDto` objects.
 - `403 Forbidden` if not an admin.
+
+### GET /api/admin/users/{id}
+
+Get one account, including its lent and borrowed loans and payment installments. Requires admin privileges.
+
+#### Response
+- `200 OK` with a `UserDetailDto`.
+- `403 Forbidden` if not an admin.
+- `404 Not Found` if the account does not exist.
 
 ### POST /api/admin/users/{id}/reset-password
 
@@ -403,18 +412,21 @@ Reset a user's password. Requires admin privileges.
 - `200 OK` with `ResetPasswordResponse` containing the new password.
 - `400 Bad Request` if password is missing or blank.
 - `403 Forbidden` if not an admin.
+- `404 Not Found` if the account does not exist.
 
 ### DELETE /api/admin/users/{id}
 
 Delete a user from the system. Requires admin privileges.
 
 #### Response
-- `204 No Content`
+- `200 OK` with a success message.
 - `403 Forbidden` if not an admin.
+- `404 Not Found` if the account does not exist.
+- `409 Conflict` if the signed-in administrator attempts to delete their own account.
 
 ### POST /api/admins
 
-Create a new admin user.
+Create a new administrator. Requires an authenticated administrator; the new admin must change their password after signing in.
 
 #### Request body
 
@@ -432,3 +444,14 @@ Create a new admin user.
 - `201 Created`
 - Returns created admin user details along with access token and refresh token.
 - `400 Bad Request` if any fields are blank or passwords do not match.
+- `401 Unauthorized` if no valid access token is supplied.
+- `403 Forbidden` if the caller is not an administrator.
+- `409 Conflict` if the email address is already registered.
+
+### GET /api/admin/profile
+
+Get the signed-in administrator's profile and whether a password change is required. Requires admin privileges.
+
+### POST /api/admin/change-password
+
+Change the signed-in administrator's password. The current password is required unless the profile indicates `mustChangePassword: true`. A successful change clears that flag.

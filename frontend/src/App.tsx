@@ -21,7 +21,9 @@ import {
   X,
 } from "lucide-react";
 import { ApiError, api, clearSession, getSavedUser, saveSession } from "./api";
+import AdminWorkspace from "./AdminWorkspace";
 import type {
+  AdminProfile,
   AuthResponse,
   DashboardSummary,
   Loan,
@@ -31,6 +33,7 @@ import type {
 
 type User = Pick<AuthResponse, "userId" | "email" | "name">;
 type Page = "overview" | LoanKind;
+type AccessState = "checking" | "admin" | "user" | "error";
 
 const emptySummary: DashboardSummary = {
   totalLent: 0,
@@ -60,6 +63,11 @@ const shortDate = (date?: string) =>
 
 function App() {
   const [user, setUser] = useState<User | null>(() => getSavedUser());
+  const [accessState, setAccessState] = useState<AccessState>(() =>
+    getSavedUser() ? "checking" : "user",
+  );
+  const [adminProfile, setAdminProfile] = useState<AdminProfile | null>(null);
+  const [roleCheckAttempt, setRoleCheckAttempt] = useState(0);
   const [page, setPage] = useState<Page>("overview");
   const [summary, setSummary] = useState(emptySummary);
   const [lent, setLent] = useState<Loan[]>([]);
@@ -104,8 +112,45 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (user) void loadData();
-  }, [user, loadData]);
+    if (!user) {
+      setAccessState("user");
+      setAdminProfile(null);
+      return;
+    }
+
+    let active = true;
+    setAccessState("checking");
+    api.adminProfile().then((profile) => {
+      if (!active) return;
+      setAdminProfile(profile);
+      setAccessState("admin");
+      setError("");
+    }).catch((caught: unknown) => {
+      if (!active) return;
+      if (caught instanceof ApiError && caught.status === 403) {
+        setAdminProfile(null);
+        setAccessState("user");
+        setError("");
+      } else if (caught instanceof ApiError && caught.status === 401) {
+        clearSession();
+        setUser(null);
+        setAdminProfile(null);
+        setAccessState("user");
+        setError("Your session has expired. Please sign in again.");
+      } else {
+        setError(caught instanceof Error ? caught.message : "Could not verify account access.");
+        setAccessState("error");
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [user, roleCheckAttempt]);
+
+  useEffect(() => {
+    if (user && accessState === "user") void loadData();
+  }, [user, accessState, loadData]);
 
   useEffect(() => {
     if (!notice) return;
@@ -147,18 +192,27 @@ function App() {
       email: response.email,
       name: response.name,
     });
+    setAdminProfile(null);
+    setAccessState("checking");
     setError("");
   }
 
-  function logout() {
+  const logout = useCallback((message = "") => {
     clearSession();
     setUser(null);
+    setAdminProfile(null);
     setSummary(emptySummary);
     setLent([]);
     setBorrowed([]);
     setPage("overview");
-    setError("");
-  }
+    setAccessState("user");
+    setError(message);
+  }, []);
+  const handleAdminSessionExpired = useCallback(
+    () => logout("Your admin session has expired. Please sign in again."),
+    [logout],
+  );
+  const handleSignOut = useCallback(() => logout(), [logout]);
 
   function openLoanForm(kind: LoanKind) {
     setSelectedKind(kind);
@@ -230,6 +284,45 @@ function App() {
     );
   }
 
+  if (accessState === "checking") {
+    return (
+      <div className="access-check-screen" role="status">
+        <LoaderCircle className="spin" size={22} />
+        <span>Checking your account permissions…</span>
+      </div>
+    );
+  }
+
+  if (accessState === "error") {
+    return (
+      <div className="access-check-screen">
+        <div className="access-check-card">
+          <ShieldCheck size={24} />
+          <h1>Could not verify access</h1>
+          <p>{error}</p>
+          <div>
+            <button className="button button-outline" onClick={() => {
+              setError("");
+              setRoleCheckAttempt((attempt) => attempt + 1);
+            }}>Try again</button>
+            <button className="button button-primary" onClick={() => logout()}>Sign out</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (accessState === "admin" && adminProfile) {
+    return (
+      <AdminWorkspace
+        profile={adminProfile}
+        onProfileChange={setAdminProfile}
+        onSessionExpired={handleAdminSessionExpired}
+        onSignOut={handleSignOut}
+      />
+    );
+  }
+
   const allLoans = [...lent, ...borrowed].sort((a, b) => {
     const aDate = a.dateLent ?? a.dateBorrowed ?? "";
     const bDate = b.dateLent ?? b.dateBorrowed ?? "";
@@ -295,7 +388,7 @@ function App() {
               <strong>{displayName}</strong>
               <span>{user.email}</span>
             </div>
-            <button className="icon-button profile-logout" onClick={logout} aria-label="Sign out" title="Sign out">
+            <button className="icon-button profile-logout" onClick={() => logout()} aria-label="Sign out" title="Sign out">
               <LogOut size={17} />
             </button>
           </div>

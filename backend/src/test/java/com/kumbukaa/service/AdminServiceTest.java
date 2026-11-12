@@ -35,6 +35,7 @@ class AdminServiceTest {
                 .fullName("Alice")
                 .email("alice@example.com")
                 .phoneNumber("+254700000001")
+                .roles("ROLE_USER,ROLE_ADMIN")
                 .build();
 
         when(userRepository.findAll()).thenReturn(List.of(user));
@@ -51,6 +52,7 @@ class AdminServiceTest {
         assertEquals("Alice", dto.getFullName());
         assertEquals("alice@example.com", dto.getEmail());
         assertEquals("+254700000001", dto.getPhoneNumber());
+        assertTrue(dto.getAdmin());
     }
 
     @Test
@@ -73,6 +75,30 @@ class AdminServiceTest {
     }
 
     @Test
+    void changeAdminPassword_hashesAndClearsForcedChangeFlag() {
+        UserRepository userRepository = mock(UserRepository.class);
+        LoanLentRepository loanLentRepository = mock(LoanLentRepository.class);
+        LoanBorrowedRepository loanBorrowedRepository = mock(LoanBorrowedRepository.class);
+
+        User admin = User.builder()
+                .id(3L)
+                .email("admin@example.com")
+                .passwordHash("old-password-hash")
+                .mustChangePassword(true)
+                .build();
+        when(userRepository.findById(3L)).thenReturn(Optional.of(admin));
+
+        AdminService service = new AdminService(userRepository, loanLentRepository, loanBorrowedRepository);
+        service.changeAdminPassword(3L, "new-password");
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        User saved = captor.getValue();
+        assertTrue(new BCryptPasswordEncoder().matches("new-password", saved.getPasswordHash()));
+        assertFalse(saved.getMustChangePassword());
+    }
+
+    @Test
     void createAdminUser_persistsAdminRole() {
         UserRepository userRepository = mock(UserRepository.class);
         LoanLentRepository loanLentRepository = mock(LoanLentRepository.class);
@@ -89,5 +115,6 @@ class AdminServiceTest {
         assertEquals("Admin User", saved.getFullName());
         assertEquals("admin@example.com", saved.getEmail());
         assertTrue(saved.getRoles().contains("ROLE_ADMIN"));
+        assertTrue(saved.getMustChangePassword());
     }
 }

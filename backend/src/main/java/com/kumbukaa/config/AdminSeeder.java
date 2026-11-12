@@ -39,14 +39,19 @@ public class AdminSeeder implements ApplicationRunner {
                     .findByEmail(defaultAdminEmail.toLowerCase().trim());
 
             if (defaultAdminOpt.isPresent()) {
-                logger.info("AdminSeeder: Default admin user already exists, forcing password reset to default.");
                 User existingAdmin = defaultAdminOpt.get();
-                existingAdmin.setPasswordHash(encoder.encode(defaultAdminPassword));
-                existingAdmin.setMustChangePassword(false);
+                boolean updateExistingAdmin = false;
                 if (existingAdmin.getRoles() == null || !existingAdmin.getRoles().contains("ROLE_ADMIN")) {
                     existingAdmin.setRoles("ROLE_ADMIN");
+                    updateExistingAdmin = true;
                 }
-                userRepository.save(existingAdmin);
+                if (!Boolean.TRUE.equals(existingAdmin.getMustChangePassword())
+                        && encoder.matches(defaultAdminPassword, existingAdmin.getPasswordHash())) {
+                    existingAdmin.setMustChangePassword(true);
+                    updateExistingAdmin = true;
+                }
+                if (updateExistingAdmin) userRepository.save(existingAdmin);
+                logger.info("AdminSeeder: Default admin user already exists; preserving its current credentials.");
                 return;
             }
 
@@ -58,7 +63,7 @@ public class AdminSeeder implements ApplicationRunner {
                     .phoneNumber(defaultAdminPhone)
                     .passwordHash(encoder.encode(defaultAdminPassword))
                     .roles("ROLE_ADMIN")
-                    .mustChangePassword(false)
+                    .mustChangePassword(true)
                     .build();
 
             User savedAdmin = userRepository.save(admin);

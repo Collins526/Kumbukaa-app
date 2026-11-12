@@ -60,11 +60,15 @@ public class AdminController {
 
     @PostMapping("/admin/users/{id}/reset-password")
     public ResponseEntity<ResetPasswordResponse> resetUserPassword(@PathVariable Long id, @RequestBody ResetPasswordRequest request) {
+        if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         if (request == null || request.getPassword() == null || request.getPassword().isBlank()) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
-        if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        adminService.resetUserPassword(id, request.getPassword());
+        try {
+            adminService.resetUserPassword(id, request.getPassword());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
         ResetPasswordResponse response = new ResetPasswordResponse(
                 "New password created",
                 request.getPassword());
@@ -74,13 +78,20 @@ public class AdminController {
     @DeleteMapping("/admin/users/{id}")
     public ResponseEntity<MessageResponse> deleteUser(@PathVariable Long id) {
         if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        adminService.deleteUser(id);
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (!(principal instanceof User admin)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        if (admin.getId().equals(id)) return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        try {
+            adminService.deleteUser(id);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
         return ResponseEntity.ok(new MessageResponse("user deleted successfully"));
     }
 
-    // Note: createAdminUser endpoint remains for compatibility with tests and tooling.
     @PostMapping("/admins")
     public ResponseEntity<AuthResponse> createAdminUser(@RequestBody AdminCreateRequest request) {
+        if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         if (request == null
                 || request.getFullName() == null || request.getFullName().isBlank()
                 || request.getEmail() == null || request.getEmail().isBlank()
@@ -93,11 +104,17 @@ public class AdminController {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
-        User createdUser = adminService.createAdminUser(
-                request.getFullName(),
-                request.getEmail(),
-                request.getPhoneNumber(),
-                request.getPassword());
+        User createdUser;
+        try {
+            createdUser = adminService.createAdminUser(
+                    request.getFullName(),
+                    request.getEmail(),
+                    request.getPhoneNumber(),
+                    request.getPassword());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new AuthResponse(null, null, null, e.getMessage(), null, null));
+        }
 
         AuthResponse response = new AuthResponse(
                 createdUser.getId(),
@@ -140,6 +157,7 @@ public class AdminController {
                 .id(user.getId())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
+                .mustChangePassword(Boolean.TRUE.equals(user.getMustChangePassword()))
                 .build();
         return ResponseEntity.ok(dto);
     }
@@ -155,27 +173,18 @@ public class AdminController {
         if (!(principal instanceof User)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         User user = (User) principal;
 
-        // If mustChangePassword is set, allow change without current password
-        if (Boolean.TRUE.equals(user.getMustChangePassword())) {
-            user.setPasswordHash(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(request.getNewPassword()));
-            user.setMustChangePassword(false);
-            adminService.resetUserPassword(user.getId(), request.getNewPassword());
-            return ResponseEntity.ok("Password updated");
-        }
-
-        if (request.getCurrentPassword() == null || request.getCurrentPassword().isBlank()) {
+        boolean mustChangePassword = Boolean.TRUE.equals(user.getMustChangePassword());
+        if (!mustChangePassword && (request.getCurrentPassword() == null || request.getCurrentPassword().isBlank())) {
             return ResponseEntity.badRequest().body("Current password is required");
         }
 
-        // verify current password
-        // reuse AuthService logic by fetching user from repository and checking
-        if (!new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().matches(request.getCurrentPassword(), user.getPasswordHash())
+        if (!mustChangePassword
+                && !new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().matches(request.getCurrentPassword(), user.getPasswordHash())
                 && !computeLegacyMatch(user.getPasswordHash(), request.getCurrentPassword())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Current password is incorrect");
         }
 
-        user.setPasswordHash(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(request.getNewPassword()));
-        adminService.resetUserPassword(user.getId(), request.getNewPassword());
+        adminService.changeAdminPassword(user.getId(), request.getNewPassword());
         return ResponseEntity.ok("Password updated");
     }
 

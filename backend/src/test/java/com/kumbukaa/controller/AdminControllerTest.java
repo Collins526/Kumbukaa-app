@@ -63,6 +63,7 @@ class AdminControllerTest {
         AuthService authService = mock(AuthService.class);
         JwtTokenProvider tokenProvider = mock(JwtTokenProvider.class);
         AdminController controller = new AdminController(svc, authService, tokenProvider);
+        authenticateAsAdmin();
 
         var request = new com.kumbukaa.dto.AdminCreateRequest(
                 "Admin User",
@@ -97,6 +98,7 @@ class AdminControllerTest {
         AuthService authService = mock(AuthService.class);
         JwtTokenProvider tokenProvider = mock(JwtTokenProvider.class);
         AdminController controller = new AdminController(svc, authService, tokenProvider);
+        authenticateAsAdmin();
 
         var request = new com.kumbukaa.dto.AdminCreateRequest(
                 "",
@@ -109,6 +111,27 @@ class AdminControllerTest {
         assertEquals(400, resp.getStatusCode().value());
         verifyNoInteractions(svc);
         verifyNoInteractions(tokenProvider);
+    }
+
+    @Test
+    void createAdminUser_forbidsNonAdmin() {
+        AdminService svc = mock(AdminService.class);
+        AdminController controller = new AdminController(svc, mock(AuthService.class), mock(JwtTokenProvider.class));
+        User user = User.builder().id(6L).email("user@example.com").build();
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        user, null, List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"))));
+
+        var request = new com.kumbukaa.dto.AdminCreateRequest(
+                "Admin User",
+                "admin@example.com",
+                "+254700000000",
+                "SecurePassword123",
+                "SecurePassword123");
+
+        var response = controller.createAdminUser(request);
+        assertEquals(403, response.getStatusCode().value());
+        verifyNoInteractions(svc);
     }
 
     @Test
@@ -132,5 +155,24 @@ class AdminControllerTest {
         assertEquals("New password created", body.getMessage());
         assertEquals("NewPass123", body.getPassword());
         verify(svc).resetUserPassword(1L, "NewPass123");
+    }
+
+    @Test
+    void deleteUser_refusesToDeleteSignedInAdmin() {
+        AdminService svc = mock(AdminService.class);
+        AdminController controller = new AdminController(svc, mock(AuthService.class), mock(JwtTokenProvider.class));
+        authenticateAsAdmin();
+
+        var response = controller.deleteUser(5L);
+
+        assertEquals(409, response.getStatusCode().value());
+        verifyNoInteractions(svc);
+    }
+
+    private void authenticateAsAdmin() {
+        User admin = User.builder().id(5L).email("admin@example.com").roles("ROLE_ADMIN").build();
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        admin, null, List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"))));
     }
 }
