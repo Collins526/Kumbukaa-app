@@ -115,7 +115,7 @@ export interface AdminAnnouncement {
   recipientCount: number;
 }
 
-export interface AdminNotification {
+export interface AppNotification {
   id: number;
   title: string;
   message: string;

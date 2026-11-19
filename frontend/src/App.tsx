@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownLeft,
   ArrowRight,
@@ -24,6 +24,7 @@ import { ApiError, api, clearSession, getSavedUser, saveSession } from "./api";
 import AdminWorkspace from "./AdminWorkspace";
 import type {
   AdminProfile,
+  AppNotification,
   AuthResponse,
   DashboardSummary,
   Loan,
@@ -32,7 +33,7 @@ import type {
 } from "./types";
 
 type User = Pick<AuthResponse, "userId" | "email" | "name">;
-type Page = "overview" | LoanKind;
+type Page = "overview" | "announcements" | LoanKind;
 type AccessState = "checking" | "admin" | "user" | "error";
 
 const emptySummary: DashboardSummary = {
@@ -73,6 +74,12 @@ function App() {
   const [lent, setLent] = useState<Loan[]>([]);
   const [borrowed, setBorrowed] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState("");
+  const [markingNotificationId, setMarkingNotificationId] = useState<number | null>(null);
+  const notificationsRequestRef = useRef(0);
+  const notificationsUserRef = useRef<number | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [query, setQuery] = useState("");
@@ -159,6 +166,7 @@ function App() {
   }, [notice]);
 
   const currentLoans = page === "borrowed" ? borrowed : lent;
+  const unreadNotifications = notifications.filter((notification) => !notification.read).length;
   const filteredLoans = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return currentLoans;
@@ -193,6 +201,9 @@ function App() {
       name: response.name,
     });
     setAdminProfile(null);
+    setNotifications([]);
+    setNotificationsError("");
+    setMarkingNotificationId(null);
     setAccessState("checking");
     setError("");
   }
@@ -204,10 +215,68 @@ function App() {
     setSummary(emptySummary);
     setLent([]);
     setBorrowed([]);
+    setNotifications([]);
+    setNotificationsError("");
+    setMarkingNotificationId(null);
     setPage("overview");
     setAccessState("user");
     setError(message);
   }, []);
+  const loadNotifications = useCallback(async () => {
+    const requestId = ++notificationsRequestRef.current;
+    const requestUserId = user?.userId;
+    if (requestUserId === undefined) return;
+    setNotificationsLoading(true);
+    setNotificationsError("");
+    try {
+      const nextNotifications = await api.notifications();
+      if (
+        requestId === notificationsRequestRef.current &&
+        notificationsUserRef.current === requestUserId
+      ) {
+        setNotifications(nextNotifications);
+      }
+    } catch (caught) {
+      if (
+        requestId !== notificationsRequestRef.current ||
+        notificationsUserRef.current !== requestUserId
+      ) {
+        return;
+      }
+      if (caught instanceof ApiError && caught.status === 401) {
+        logout("Your session has expired. Please sign in again.");
+      } else {
+        setNotificationsError(
+          caught instanceof Error ? caught.message : "Could not load announcements.",
+        );
+      }
+    } finally {
+      if (
+        requestId === notificationsRequestRef.current &&
+        notificationsUserRef.current === requestUserId
+      ) {
+        setNotificationsLoading(false);
+      }
+    }
+  }, [logout, user?.userId]);
+  useEffect(() => {
+    if (!user || accessState !== "user") {
+      notificationsUserRef.current = null;
+      notificationsRequestRef.current += 1;
+      setNotificationsLoading(false);
+      return;
+    }
+    notificationsUserRef.current = user.userId;
+    void loadNotifications();
+    const interval = window.setInterval(() => void loadNotifications(), 30_000);
+    return () => {
+      window.clearInterval(interval);
+      if (notificationsUserRef.current === user.userId) {
+        notificationsUserRef.current = null;
+      }
+      notificationsRequestRef.current += 1;
+    };
+  }, [user, accessState, loadNotifications]);
   const handleAdminSessionExpired = useCallback(
     () => logout("Your admin session has expired. Please sign in again."),
     [logout],
@@ -266,6 +335,35 @@ function App() {
       await loadData();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not delete loan.");
+    }
+  }
+
+  async function markNotificationRead(notification: AppNotification) {
+    if (notification.read || markingNotificationId === notification.id) return;
+    const requestUserId = user?.userId;
+    if (requestUserId === undefined) return;
+    setMarkingNotificationId(notification.id);
+    setNotificationsError("");
+    try {
+      await api.markNotificationRead(notification.id);
+      if (notificationsUserRef.current === requestUserId) {
+        setNotifications((current) =>
+          current.map((item) => item.id === notification.id ? { ...item, read: true } : item),
+        );
+      }
+    } catch (caught) {
+      if (notificationsUserRef.current !== requestUserId) return;
+      if (caught instanceof ApiError && caught.status === 401) {
+        logout("Your session has expired. Please sign in again.");
+      } else {
+        setNotificationsError(
+          caught instanceof Error ? caught.message : "Could not update this announcement.",
+        );
+      }
+    } finally {
+      if (notificationsUserRef.current === requestUserId) {
+        setMarkingNotificationId(null);
+      }
     }
   }
 
@@ -377,6 +475,16 @@ function App() {
             <ArrowDownLeft size={18} /> Money borrowed
             <span className="nav-count">{borrowed.length}</span>
           </button>
+          <button
+            className={`nav-item ${page === "announcements" ? "nav-active" : ""}`}
+            onClick={() => {
+              setPage("announcements");
+              setMobileNavOpen(false);
+            }}
+          >
+            <Bell size={18} /> Announcements
+            {unreadNotifications > 0 && <span className="nav-count">{unreadNotifications}</span>}
+          </button>
         </nav>
         <div className="sidebar-bottom">
           <div className={`connection ${apiOnline === false ? "connection-offline" : ""}`}>
@@ -414,6 +522,15 @@ function App() {
             <span className="today-label">{new Intl.DateTimeFormat("en-KE", {
               weekday: "short", day: "numeric", month: "short",
             }).format(new Date())}</span>
+            <button
+              className="icon-button notification-button"
+              aria-label={`Announcements${unreadNotifications ? `, ${unreadNotifications} unread` : ""}`}
+              title="Announcements"
+              onClick={() => setPage("announcements")}
+            >
+              <Bell size={18} />
+              {unreadNotifications > 0 && <span className="notification-badge">{unreadNotifications}</span>}
+            </button>
             <button className="icon-button notification-button" aria-label="Help" title="Kumbukaa loan tracker">
               <CircleHelp size={18} />
             </button>
@@ -432,6 +549,15 @@ function App() {
               onAdd={openLoanForm}
               onNavigate={setPage}
               onPayment={openPayment}
+            />
+          ) : page === "announcements" ? (
+            <AnnouncementPage
+              notifications={notifications}
+              loading={notificationsLoading}
+              error={notificationsError}
+              markingNotificationId={markingNotificationId}
+              onRefresh={() => void loadNotifications()}
+              onMarkRead={(notification) => void markNotificationRead(notification)}
             />
           ) : (
             <LoanList
@@ -474,7 +600,94 @@ function App() {
 function pageTitle(page: Page) {
   if (page === "lent") return "Money lent";
   if (page === "borrowed") return "Money borrowed";
+  if (page === "announcements") return "Announcements";
   return "Overview";
+}
+
+function AnnouncementPage({
+  notifications,
+  loading,
+  error,
+  markingNotificationId,
+  onRefresh,
+  onMarkRead,
+}: {
+  notifications: AppNotification[];
+  loading: boolean;
+  error: string;
+  markingNotificationId: number | null;
+  onRefresh: () => void;
+  onMarkRead: (notification: AppNotification) => void;
+}) {
+  return (
+    <>
+      <div className="welcome-row">
+        <div>
+          <div className="eyebrow"><span className="eyebrow-line" /> UPDATES FROM KUMBUKAA</div>
+          <h1>Announcements</h1>
+          <p className="page-subtitle">Important messages sent to your account.</p>
+        </div>
+        <button className="button button-outline" onClick={onRefresh} disabled={loading}>
+          {loading ? <LoaderCircle className="spin" size={16} /> : <Bell size={16} />}
+          Refresh
+        </button>
+      </div>
+
+      {error && <div className="alert alert-error" role="alert">{error}</div>}
+      {loading && notifications.length === 0 && (
+        <div className="loading-state" role="status">
+          <LoaderCircle className="spin" size={18} /> Loading announcements…
+        </div>
+      )}
+      {!loading && !error && notifications.length === 0 && (
+        <div className="empty-state announcement-empty">
+          <div className="empty-icon"><Bell size={20} /></div>
+          <strong>No announcements yet</strong>
+          <p>Messages from Kumbukaa will appear here.</p>
+        </div>
+      )}
+      <div className="announcement-list">
+        {notifications.map((notification) => (
+          <article
+            className={`announcement-card ${notification.read ? "" : "announcement-unread"}`}
+            key={notification.id}
+          >
+            <div className="announcement-card-icon"><Bell size={18} /></div>
+            <div className="announcement-card-content">
+              <div className="announcement-card-heading">
+                <h2>{notification.title}</h2>
+                {!notification.read && <span className="announcement-new">New</span>}
+              </div>
+              <time dateTime={notification.createdAt}>
+                {new Intl.DateTimeFormat("en-KE", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                }).format(new Date(notification.createdAt))}
+              </time>
+              <p>{notification.message}</p>
+            </div>
+            {notification.read ? (
+              <span className="announcement-read"><Check size={14} /> Read</span>
+            ) : (
+              <button
+                className="button button-outline announcement-read-button"
+                onClick={() => onMarkRead(notification)}
+                disabled={markingNotificationId === notification.id}
+              >
+                {markingNotificationId === notification.id
+                  ? <LoaderCircle className="spin" size={14} />
+                  : <Check size={14} />}
+                Mark as read
+              </button>
+            )}
+          </article>
+        ))}
+      </div>
+    </>
+  );
 }
 
 function Overview({

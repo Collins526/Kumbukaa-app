@@ -40,7 +40,7 @@ import type {
   AdminAuditEntry,
   AdminGlobalLoan,
   AdminNote,
-  AdminNotification,
+  AppNotification,
   AdminOverview,
   AdminProfile,
   AdminUserDetails,
@@ -187,7 +187,7 @@ function AdminWorkspace({
   const [loans, setLoans] = useState<AdminGlobalLoan[]>([]);
   const [auditLog, setAuditLog] = useState<AdminAuditEntry[]>([]);
   const [announcements, setAnnouncements] = useState<AdminAnnouncement[]>([]);
-  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<AdminUserDetails | null>(null);
   const [accountNotes, setAccountNotes] = useState<AdminNote[]>([]);
   const [selectedUser, setSelectedUser] = useState<AdminUserSummary | null>(null);
@@ -241,7 +241,7 @@ function AdminWorkspace({
         api.adminLoans(),
         api.adminAuditLog(),
         api.adminAnnouncements(),
-        api.adminNotifications(),
+        api.notifications(),
       ]);
       setUsers(nextUsers);
       setOverview(nextOverview);
@@ -625,10 +625,10 @@ function AdminWorkspace({
     }
   }
 
-  async function markNotificationRead(notification: AdminNotification) {
+  async function markNotificationRead(notification: AppNotification) {
     if (notification.read) return;
     try {
-      await api.markAdminNotificationRead(notification.id);
+      await api.markNotificationRead(notification.id);
       setNotifications((current) =>
         current.map((item) => (item.id === notification.id ? { ...item, read: true } : item)),
       );

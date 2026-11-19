@@ -9,8 +9,8 @@ import type {
   AdminAuditEntry,
   AdminGlobalLoan,
   AdminNote,
-  AdminNotification,
   AdminOverview,
+  AppNotification,
   AnnouncementAudience,
   AnnouncementChannel,
   DashboardSummary,
@@ -250,11 +250,11 @@ export const api = {
     });
   },
 
-  adminNotifications() {
-    return request<AdminNotification[]>("/api/notifications");
+  notifications() {
+    return request<AppNotification[]>("/api/notifications");
   },
 
-  markAdminNotificationRead(id: number) {
+  markNotificationRead(id: number) {
     return request<void>(`/api/notifications/${id}/read`, { method: "POST" });
   },
 
