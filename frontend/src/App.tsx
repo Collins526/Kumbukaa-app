@@ -3,7 +3,9 @@ import {
   ArrowDownLeft,
   ArrowRight,
   ArrowUpRight,
+  Activity,
   Bell,
+  CalendarDays,
   Check,
   CircleHelp,
   Clock3,
@@ -17,6 +19,8 @@ import {
   Plus,
   Search,
   ShieldCheck,
+  TrendingUp,
+  Users,
   Wallet,
   X,
 } from "lucide-react";
@@ -83,6 +87,7 @@ function App() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [query, setQuery] = useState("");
+  const [globalSearch, setGlobalSearch] = useState("");
   const [modal, setModal] = useState<"loan" | "payment" | null>(null);
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
   const [selectedKind, setSelectedKind] = useState<LoanKind>("lent");
@@ -165,8 +170,22 @@ function App() {
     return () => window.clearTimeout(timeout);
   }, [notice]);
 
+  const allLoans = useMemo(() => [...lent, ...borrowed].sort((a, b) => {
+    const aDate = a.dateLent ?? a.dateBorrowed ?? "";
+    const bDate = b.dateLent ?? b.dateBorrowed ?? "";
+    return bDate.localeCompare(aDate);
+  }), [lent, borrowed]);
   const currentLoans = page === "borrowed" ? borrowed : lent;
   const unreadNotifications = notifications.filter((notification) => !notification.read).length;
+  const globalMatches = useMemo(() => {
+    const needle = globalSearch.trim().toLocaleLowerCase();
+    if (!needle) return [];
+    return allLoans.filter((loan) =>
+      [loan.personName, loan.phoneNumber, loan.status, loan.notes]
+        .filter(Boolean)
+        .some((value) => value!.toLocaleLowerCase().includes(needle)),
+    ).slice(0, 5);
+  }, [allLoans, globalSearch]);
   const filteredLoans = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return currentLoans;
@@ -373,6 +392,13 @@ function App() {
     setModal("payment");
   }
 
+  function openLoanSearchResult(loan: Loan) {
+    const kind: LoanKind = loan.dateBorrowed ? "borrowed" : "lent";
+    setQuery(loan.personName);
+    setPage(kind);
+    setGlobalSearch("");
+  }
+
   if (!user) {
     return (
       <AuthScreen
@@ -423,11 +449,6 @@ function App() {
     );
   }
 
-  const allLoans = [...lent, ...borrowed].sort((a, b) => {
-    const aDate = a.dateLent ?? a.dateBorrowed ?? "";
-    const bDate = b.dateLent ?? b.dateBorrowed ?? "";
-    return bDate.localeCompare(aDate);
-  });
   const displayName = user.name?.trim() || user.email.split("@")[0];
 
   return (
@@ -518,6 +539,60 @@ function App() {
             <span>Workspace</span><span className="crumb-slash">/</span>
             <strong>{pageTitle(page)}</strong>
           </div>
+          <div className="global-search-wrap">
+            <label className="global-search">
+              <Search size={15} />
+              <input
+                value={globalSearch}
+                onChange={(event) => setGlobalSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") setGlobalSearch("");
+                  if (event.key === "Enter" && globalMatches[0]) {
+                    openLoanSearchResult(globalMatches[0]);
+                  }
+                }}
+                placeholder="Search loans and people"
+                aria-label="Search loans and people"
+                aria-expanded={Boolean(globalSearch.trim())}
+                aria-controls="global-search-results"
+              />
+              {globalSearch && (
+                <button
+                  type="button"
+                  className="search-clear"
+                  onClick={() => setGlobalSearch("")}
+                  aria-label="Clear global search"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </label>
+            {globalSearch.trim() && (
+              <div className="global-search-results" id="global-search-results" role="listbox">
+                {globalMatches.length ? globalMatches.map((loan) => {
+                  const kind: LoanKind = loan.dateBorrowed ? "borrowed" : "lent";
+                  return (
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected="false"
+                      key={`${kind}-${loan.id}`}
+                      onClick={() => openLoanSearchResult(loan)}
+                    >
+                      <span className="global-search-avatar">{loan.personName.slice(0, 1).toUpperCase()}</span>
+                      <span className="global-search-copy">
+                        <strong>{loan.personName}</strong>
+                        <small>{kind === "lent" ? "Money lent" : "Money borrowed"} · {loan.status.replace("_", " ")}</small>
+                      </span>
+                      <span className="global-search-balance">{money(loan.balance)}</span>
+                    </button>
+                  );
+                }) : (
+                  <div className="global-search-empty">No matching loans found.</div>
+                )}
+              </div>
+            )}
+          </div>
           <div className="topbar-actions">
             <span className="today-label">{new Intl.DateTimeFormat("en-KE", {
               weekday: "short", day: "numeric", month: "short",
@@ -545,10 +620,20 @@ function App() {
             <Overview
               summary={summary}
               loans={allLoans}
+              notifications={notifications}
+              notificationsLoading={notificationsLoading}
+              notificationsError={notificationsError}
+              userName={displayName}
               loading={loading}
               onAdd={openLoanForm}
               onNavigate={setPage}
               onPayment={openPayment}
+              onMarkNotificationRead={(notification) => void markNotificationRead(notification)}
+              onRefreshNotifications={() => void loadNotifications()}
+              onViewPerson={(name, kind) => {
+                setQuery(name);
+                setPage(kind);
+              }}
             />
           ) : page === "announcements" ? (
             <AnnouncementPage
@@ -693,31 +778,79 @@ function AnnouncementPage({
 function Overview({
   summary,
   loans,
+  notifications,
+  notificationsLoading,
+  notificationsError,
+  userName,
   loading,
   onAdd,
   onNavigate,
   onPayment,
+  onMarkNotificationRead,
+  onRefreshNotifications,
+  onViewPerson,
 }: {
   summary: DashboardSummary;
   loans: Loan[];
+  notifications: AppNotification[];
+  notificationsLoading: boolean;
+  notificationsError: string;
+  userName: string;
   loading: boolean;
   onAdd: (kind: LoanKind) => void;
   onNavigate: (page: Page) => void;
   onPayment: (loan: Loan, kind: LoanKind) => void;
+  onMarkNotificationRead: (notification: AppNotification) => void;
+  onRefreshNotifications: () => void;
+  onViewPerson: (name: string, kind: LoanKind) => void;
 }) {
   const recent = loans.slice(0, 5);
+  const allDuePayments = getUpcomingPayments(loans);
+  const duePayments = allDuePayments.slice(0, 5);
+  const recentActivity = getRecentActivity(loans).slice(0, 5);
+  const people = getPeopleYouDealWith(loans).slice(0, 5);
+  const announcements = notifications.slice(0, 2);
+  const outstanding = allDuePayments.filter((item) => item.daysUntilDue <= 7);
+  const lentPaid = Math.max(0, summary.totalLent - summary.amountOwedToMe);
+  const borrowedPaid = Math.max(0, summary.totalBorrowed - summary.amountIOwe);
+
   return (
     <>
       <div className="welcome-row">
         <div>
           <div className="eyebrow"><span className="eyebrow-line" /> YOUR MONEY, IN PERSPECTIVE</div>
-          <h1>Good to see you<span className="heading-period">.</span></h1>
+          <h1>Good to see you, {userName}<span className="heading-period">.</span></h1>
           <p className="page-subtitle">A clear view of what’s owed to you and what you owe.</p>
         </div>
         <button className="button button-primary" onClick={() => onAdd("lent")}>
           <Plus size={17} /> Add a loan
         </button>
       </div>
+
+      {outstanding.length > 0 && (
+        <section className="dashboard-reminder" aria-label="Upcoming payment reminder">
+          <span className="dashboard-reminder-icon"><CalendarDays size={18} /></span>
+          <div className="dashboard-reminder-copy">
+            <strong>
+              {outstanding.length} {outstanding.length === 1 ? "payment" : "payments"}{" "}
+              {outstanding.some((item) => item.daysUntilDue < 0) ? "need attention" : "due soon"}
+            </strong>
+            <span>
+              {outstanding[0].loan.personName} · {outstanding[0].daysUntilDue < 0
+                ? `${Math.abs(outstanding[0].daysUntilDue)} days overdue`
+                : outstanding[0].daysUntilDue === 0
+                  ? "Due today"
+                  : `Due in ${outstanding[0].daysUntilDue} days`}
+            </span>
+          </div>
+          <button
+            className="button button-outline"
+            onClick={() => onNavigate(outstanding[0].kind)}
+          >
+            Review payments <ArrowRight size={14} />
+          </button>
+        </section>
+      )}
 
       <section className="stats-grid" aria-label="Loan summary">
         <StatCard
@@ -754,11 +887,11 @@ function Overview({
         <div className="panel recent-panel">
           <div className="panel-heading">
             <div>
-              <h2>Recent loans</h2>
-              <p>Your latest lending activity</p>
+              <h2>Your loans</h2>
+              <p>Recent lending and borrowing activity</p>
             </div>
             <button className="text-button" onClick={() => onNavigate("lent")}>
-              View all <ArrowRight size={15} />
+              View lent <ArrowRight size={15} />
             </button>
           </div>
           {loading && loans.length === 0 ? (
@@ -830,8 +963,353 @@ function Overview({
           </div>
         </div>
       </section>
+
+      <section className="dashboard-two-column">
+        <div className="panel dashboard-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Upcoming payments</h2>
+              <p>Due dates and outstanding balances</p>
+            </div>
+            <button className="text-button" onClick={() => onNavigate("borrowed")}>
+              View loans <ArrowRight size={15} />
+            </button>
+          </div>
+          {loading && loans.length === 0 ? (
+            <LoadingRows />
+          ) : duePayments.length ? (
+            <div className="dashboard-list">
+              {duePayments.map(({ loan, kind, daysUntilDue }) => (
+                <div className="dashboard-list-row" key={`due-${kind}-${loan.id}`}>
+                  <span className={`dashboard-row-icon ${daysUntilDue < 0 ? "dashboard-row-overdue" : ""}`}>
+                    <CalendarDays size={16} />
+                  </span>
+                  <div className="dashboard-row-main">
+                    <strong>{loan.personName}</strong>
+                    <span>{kind === "borrowed" ? "You owe" : "Expected from"} · {shortDate(loan.dueDate)}</span>
+                  </div>
+                  <div className="dashboard-row-value">
+                    <strong>{money(loan.balance)}</strong>
+                    <span className={daysUntilDue < 0 ? "dashboard-overdue-label" : ""}>
+                      {daysUntilDue < 0
+                        ? `${Math.abs(daysUntilDue)}d overdue`
+                        : daysUntilDue === 0 ? "Due today" : `In ${daysUntilDue}d`}
+                    </span>
+                  </div>
+                  <button
+                    className="row-action"
+                    onClick={() => onPayment(loan, kind)}
+                    aria-label={`${kind === "borrowed" ? "Record repayment" : "Record payment"} for ${loan.personName}`}
+                  >
+                    {kind === "borrowed" ? "Repay" : "Record"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="dashboard-empty">
+              <CalendarDays size={18} />
+              <span>No outstanding payments are due in the next 30 days.</span>
+            </div>
+          )}
+        </div>
+
+        <div className="panel dashboard-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Recent activity</h2>
+              <p>Your latest loans and recorded repayments</p>
+            </div>
+            <Activity size={17} className="dashboard-heading-icon" />
+          </div>
+          {loading && loans.length === 0 ? (
+            <LoadingRows />
+          ) : recentActivity.length ? (
+            <div className="dashboard-list">
+              {recentActivity.map((item) => (
+                <button
+                  className="activity-row"
+                  key={item.id}
+                  onClick={() => onNavigate(item.kind)}
+                >
+                  <span className={`activity-dot ${item.type === "payment" ? "activity-dot-payment" : ""}`} />
+                  <span className="activity-copy">
+                    <strong>{item.type === "payment" ? "Payment recorded" : "Loan added"}</strong>
+                    <small>{item.personName} · {item.kind === "lent" ? "Money lent" : "Money borrowed"}</small>
+                  </span>
+                  <span className="activity-amount">{money(item.amount)}</span>
+                  <time>{shortDate(item.date)}</time>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="dashboard-empty">
+              <Activity size={18} />
+              <span>Your loan and repayment activity will appear here.</span>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="panel analytics-panel">
+        <div className="panel-heading">
+          <div>
+            <h2>Loan analytics</h2>
+            <p>Repayment progress across your current portfolio</p>
+          </div>
+          <TrendingUp size={18} className="dashboard-heading-icon" />
+        </div>
+        <PortfolioProgress
+          label="Money lent"
+          principal={summary.totalLent}
+          outstanding={summary.amountOwedToMe}
+          paid={lentPaid}
+          tone="mint"
+        />
+        <PortfolioProgress
+          label="Money borrowed"
+          principal={summary.totalBorrowed}
+          outstanding={summary.amountIOwe}
+          paid={borrowedPaid}
+          tone="lavender"
+        />
+        <div className="analytics-totals">
+          <span><strong>{loans.length}</strong> loans tracked</span>
+          <span><strong>{money(summary.amountOwedToMe + summary.amountIOwe)}</strong> total outstanding</span>
+          <span><strong>{money(lentPaid + borrowedPaid)}</strong> repaid</span>
+        </div>
+      </section>
+
+      <section className="dashboard-two-column">
+        <div className="panel dashboard-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>People you deal with</h2>
+              <p>Contacts connected to your loans</p>
+            </div>
+            <Users size={18} className="dashboard-heading-icon" />
+          </div>
+          {people.length ? (
+            <div className="dashboard-list">
+              {people.map((person) => (
+                <div className="person-row" key={person.key}>
+                  <span className="person-avatar">{person.name.slice(0, 1).toUpperCase()}</span>
+                  <div className="dashboard-row-main">
+                    <strong>{person.name}</strong>
+                    <span>{person.loanCount} {person.loanCount === 1 ? "loan" : "loans"} · {money(person.balance)} outstanding</span>
+                  </div>
+                  <button
+                    className="text-button"
+                    onClick={() => onViewPerson(person.name, person.kind)}
+                  >
+                    View <ArrowRight size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="dashboard-empty">
+              <Users size={18} />
+              <span>People from your loans will appear here.</span>
+            </div>
+          )}
+        </div>
+
+        <div className="panel dashboard-panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Announcements</h2>
+              <p>Updates sent to your account</p>
+            </div>
+            <button className="text-button" onClick={() => onNavigate("announcements")}>
+              View all <ArrowRight size={15} />
+            </button>
+          </div>
+          {notificationsLoading && !notifications.length ? (
+            <LoadingRows />
+          ) : notificationsError ? (
+            <div className="dashboard-empty dashboard-empty-error">
+              <span>{notificationsError}</span>
+              <button className="text-button" onClick={onRefreshNotifications}>
+                Try again <ArrowRight size={14} />
+              </button>
+            </div>
+          ) : announcements.length ? (
+            <div className="dashboard-list">
+              {announcements.map((announcement) => (
+                <div className="announcement-preview" key={announcement.id}>
+                  <button
+                    className="announcement-preview-copy"
+                    onClick={() => onNavigate("announcements")}
+                  >
+                    <span className="announcement-preview-heading">
+                      <strong>{announcement.title}</strong>
+                      {!announcement.read && <span className="announcement-new">New</span>}
+                    </span>
+                    <span>{announcement.message}</span>
+                    <time>{shortDate(announcement.createdAt)}</time>
+                  </button>
+                  {!announcement.read && (
+                    <button
+                      className="announcement-quick-read"
+                      onClick={() => onMarkNotificationRead(announcement)}
+                      aria-label={`Mark ${announcement.title} as read`}
+                      title="Mark as read"
+                    >
+                      <Check size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="dashboard-empty">
+              <Bell size={18} />
+              <span>No announcements yet. New updates will appear here.</span>
+              <button className="text-button" onClick={() => onNavigate("announcements")}>
+                Open announcements <ArrowRight size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
       <div className="footnote"><ShieldCheck size={14} /> Your financial details are private to your account.</div>
     </>
+  );
+}
+
+function getUpcomingPayments(loans: Loan[]) {
+  const today = localDateKey(new Date());
+  return loans
+    .filter((loan) => loan.balance > 0 && loan.dueDate)
+    .map((loan) => {
+      const kind: LoanKind = loan.dateBorrowed ? "borrowed" : "lent";
+      const dueDate = loan.dueDate ?? "";
+      const daysUntilDue = Math.round(
+        (Date.parse(`${dueDate.slice(0, 10)}T00:00:00Z`) -
+          Date.parse(`${today}T00:00:00Z`)) / 86_400_000,
+      );
+      return { loan, kind, daysUntilDue };
+    })
+    .filter((item) => Number.isFinite(item.daysUntilDue) && item.daysUntilDue <= 30)
+    .sort((a, b) => a.daysUntilDue - b.daysUntilDue);
+}
+
+function localDateKey(date: Date) {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 10);
+}
+
+type LoanActivityItem = {
+  id: string;
+  type: "loan" | "payment";
+  kind: LoanKind;
+  personName: string;
+  amount: number;
+  date: string;
+};
+
+function getRecentActivity(loans: Loan[]) {
+  return loans.flatMap((loan) => {
+    const kind: LoanKind = loan.dateBorrowed ? "borrowed" : "lent";
+    const startDate = loan.dateLent ?? loan.dateBorrowed;
+    const entries: LoanActivityItem[] = startDate
+      ? [{
+          id: `${kind}-${loan.id}-created`,
+          type: "loan",
+          kind,
+          personName: loan.personName,
+          amount: loan.loanAmount,
+          date: startDate,
+        }]
+      : [];
+    (loan.installments ?? []).forEach((payment, index) => {
+      if (payment.paymentDate) {
+        entries.push({
+          id: `${kind}-${loan.id}-payment-${index}`,
+          type: "payment",
+          kind,
+          personName: loan.personName,
+          amount: payment.amount,
+          date: payment.paymentDate,
+        });
+      }
+    });
+    return entries;
+  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+}
+
+function getPeopleYouDealWith(loans: Loan[]) {
+  const people = new Map<string, {
+    key: string;
+    name: string;
+    loanCount: number;
+    balance: number;
+    kind: LoanKind;
+    latestDate: string;
+  }>();
+  loans.forEach((loan) => {
+    const name = loan.personName?.trim() || "Unknown contact";
+    const key = loan.phoneNumber?.trim().toLocaleLowerCase()
+      || loan.counterpartyEmail?.trim().toLocaleLowerCase()
+      || name.toLocaleLowerCase();
+    const kind: LoanKind = loan.dateBorrowed ? "borrowed" : "lent";
+    const date = loan.dateLent ?? loan.dateBorrowed ?? "";
+    const person = people.get(key) ?? {
+      key,
+      name,
+      loanCount: 0,
+      balance: 0,
+      kind,
+      latestDate: date,
+    };
+    person.loanCount += 1;
+    person.balance += loan.balance || 0;
+    if (date > person.latestDate) {
+      person.latestDate = date;
+      person.kind = kind;
+    }
+    people.set(key, person);
+  });
+  return [...people.values()].sort((a, b) => b.balance - a.balance || b.latestDate.localeCompare(a.latestDate));
+}
+
+function PortfolioProgress({
+  label,
+  principal,
+  outstanding,
+  paid,
+  tone,
+}: {
+  label: string;
+  principal: number;
+  outstanding: number;
+  paid: number;
+  tone: "mint" | "lavender";
+}) {
+  const paidPercent = principal > 0 ? Math.min(100, Math.max(0, (paid / principal) * 100)) : 0;
+  return (
+    <div className="portfolio-progress">
+      <div className="portfolio-progress-heading">
+        <strong>{label}</strong>
+        <span>{money(principal)} total</span>
+      </div>
+      <div
+        className={`portfolio-progress-track ${tone}`}
+        role="progressbar"
+        aria-label={`${label} repayment progress`}
+        aria-valuenow={Math.round(paidPercent)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <span style={{ width: `${paidPercent}%` }} />
+      </div>
+      <div className="portfolio-progress-footer">
+        <span>{Math.round(paidPercent)}% repaid · {money(paid)} paid</span>
+        <strong>{money(outstanding)} outstanding</strong>
+      </div>
+    </div>
   );
 }
 

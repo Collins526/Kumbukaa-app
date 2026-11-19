@@ -72,6 +72,28 @@ class AdminServiceControlCenterTest {
     }
 
     @Test
+    void savesInAppAnnouncementForEveryUserInAudience() {
+        User actor = User.builder().id(1L).fullName("Admin").roles("ROLE_ADMIN").build();
+        User recipient = User.builder().id(2L).email("user@example.com").fullName("User").build();
+        UserRepository users = mock(UserRepository.class);
+        when(users.findAll()).thenReturn(java.util.List.of(actor, recipient));
+        AdminAnnouncementRepository announcements = mock(AdminAnnouncementRepository.class);
+        when(announcements.save(any(AdminAnnouncement.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        AppNotificationRepository notifications = mock(AppNotificationRepository.class);
+        AdminService service = service(users, mock(AdminAuditEventRepository.class), announcements, notifications);
+
+        var result = service.createAnnouncement(
+                new AnnouncementRequest("Service update", "Scheduled maintenance", "ALL_USERS", "IN_APP", null),
+                actor);
+
+        assertEquals(2, result.getRecipientCount());
+        verify(notifications, times(2)).save(argThat(notification ->
+                notification.getTitle().equals("Service update")
+                        && notification.getMessage().equals("Scheduled maintenance")
+                        && !notification.getRead()));
+    }
+
+    @Test
     void persistsRoleAndSuspensionWithUserTimelineAuditType() {
         User actor = User.builder().id(1L).fullName("Admin").roles("ROLE_ADMIN").build();
         User target = User.builder().id(2L).fullName("Target").roles("ROLE_USER").build();
