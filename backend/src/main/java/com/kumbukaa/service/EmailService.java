@@ -38,13 +38,23 @@ public class EmailService {
             sendViaResend(to, "Your Kumbukaa OTP Code", body);
             return;
         }
-
         if (smtpFromEmail != null && !smtpFromEmail.isBlank()) {
             sendViaSmtp(to, "Your Kumbukaa OTP Code", body);
             return;
         }
 
         throw new MailSendException("No valid email provider configured.");
+    }
+
+    public void sendEmail(String to, String subject, String body) {
+        if (to == null || to.isBlank()) throw new IllegalArgumentException("Recipient email is required");
+        if (resendApiKey != null && !resendApiKey.isBlank()) {
+            sendViaResend(to, subject, body);
+        } else if (smtpFromEmail != null && !smtpFromEmail.isBlank()) {
+            sendViaSmtp(to, subject, body);
+        } else {
+            throw new MailSendException("No valid email provider configured.");
+        }
     }
 
     public void sendPasswordResetOtpEmail(String to, String userName, String code) {
@@ -78,8 +88,14 @@ public class EmailService {
             throw new MailSendException("Resend API key is not configured.");
         }
 
-        String payload = String.format("{\"from\":\"%s\",\"to\":[\"%s\"],\"subject\":\"%s\",\"text\":\"%s\"}",
-                resendFromEmail, to, subject, body.replace("\n", "\\n"));
+        String payload;
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            payload = mapper.writeValueAsString(java.util.Map.of(
+                    "from", resendFromEmail, "to", java.util.List.of(to), "subject", subject, "text", body));
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new MailSendException("Failed to encode email payload.", e);
+        }
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("https://api.resend.com/emails"))
@@ -93,7 +109,9 @@ public class EmailService {
             if (response.statusCode() >= 300) {
                 throw new MailSendException("Resend email failed with status " + response.statusCode() + ": " + response.body());
             }
-        } catch (IOException | InterruptedException exception) {
+        } catch (IOException exception) {
+            throw new MailSendException("Failed to send email through Resend.", exception);
+        } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new MailSendException("Failed to send email through Resend.", exception);
         }

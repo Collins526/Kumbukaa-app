@@ -3,6 +3,16 @@ import type {
   AdminProfile,
   AdminUserDetails,
   AdminUserSummary,
+  AdminAccountRole,
+  AdminAccountStatus,
+  AdminAnnouncement,
+  AdminAuditEntry,
+  AdminGlobalLoan,
+  AdminNote,
+  AdminNotification,
+  AdminOverview,
+  AnnouncementAudience,
+  AnnouncementChannel,
   DashboardSummary,
   Loan,
   LoanInput,
@@ -151,8 +161,52 @@ export const api = {
     return request<AdminUserSummary[]>("/api/admin/users");
   },
 
+  adminOverview() {
+    return request<AdminOverview>("/api/admin/overview");
+  },
+
+  adminLoans() {
+    return request<AdminGlobalLoan[]>("/api/admin/loans");
+  },
+
+  adminAuditLog() {
+    return request<AdminAuditEntry[]>("/api/admin/audit-log");
+  },
+
   adminUser(id: number) {
     return request<AdminUserDetails>(`/api/admin/users/${id}`);
+  },
+
+  updateAdminUserRole(id: number, role: AdminAccountRole) {
+    return request<AdminUserDetails>(`/api/admin/users/${id}/role`, {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    });
+  },
+
+  updateAdminUserStatus(id: number, status: AdminAccountStatus) {
+    return request<AdminUserDetails>(`/api/admin/users/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  updateAdminUserVerification(id: number, status: AdminUserSummary["verificationStatus"]) {
+    return request<AdminUserDetails>(`/api/admin/users/${id}/verification`, {
+      method: "PATCH",
+      body: JSON.stringify({ verificationStatus: status }),
+    });
+  },
+
+  adminUserNotes(id: number) {
+    return request<AdminNote[]>(`/api/admin/users/${id}/notes`);
+  },
+
+  createAdminUserNote(id: number, note: string) {
+    return request<AdminNote>(`/api/admin/users/${id}/notes`, {
+      method: "POST",
+      body: JSON.stringify({ note }),
+    });
   },
 
   resetAdminUserPassword(id: number, password: string) {
@@ -176,6 +230,43 @@ export const api = {
     return request<AuthResponse>("/api/admins", {
       method: "POST",
       body: JSON.stringify(input),
+    });
+  },
+
+  adminAnnouncements() {
+    return request<AdminAnnouncement[]>("/api/admin/announcements");
+  },
+
+  createAdminAnnouncement(input: {
+    title: string;
+    message: string;
+    audience: AnnouncementAudience;
+    channel: AnnouncementChannel;
+    targetUserId?: number;
+  }) {
+    return request<AdminAnnouncement>("/api/admin/announcements", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
+  adminNotifications() {
+    return request<AdminNotification[]>("/api/notifications");
+  },
+
+  markAdminNotificationRead(id: number) {
+    return request<void>(`/api/notifications/${id}/read`, { method: "POST" });
+  },
+
+  remindAdminLoan(kind: AdminGlobalLoan["kind"], id: number) {
+    return request<{ sent: number }>(`/api/admin/loans/${kind}/${id}/remind`, {
+      method: "POST",
+    });
+  },
+
+  remindOverdueLoans() {
+    return request<{ sent: number }>("/api/admin/reminders/overdue", {
+      method: "POST",
     });
   },
 

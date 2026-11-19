@@ -23,16 +23,25 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(nullable = false)
+    @Column
     private String phoneNumber;
 
-    @Column(nullable = false)
+    @Column
     private String passwordHash;
 
     /** Comma-separated roles, e.g. "ROLE_USER,ROLE_ADMIN" */
     private String roles;
 
     private Boolean mustChangePassword;
+
+    @Builder.Default
+    private String accountStatus = "ACTIVE";
+
+    @Builder.Default
+    private String verificationStatus = "PENDING";
+
+    private LocalDateTime lastSeenAt;
+    private String lastDevice;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -43,11 +52,15 @@ public class User {
         if (createdAt == null) {
             createdAt = now;
         }
+        if (accountStatus == null) accountStatus = "ACTIVE";
+        if (verificationStatus == null) verificationStatus = "PENDING";
         updatedAt = now;
     }
 
     @PreUpdate
     public void onUpdate() {
+        if (accountStatus == null) accountStatus = "ACTIVE";
+        if (verificationStatus == null) verificationStatus = "PENDING";
         updatedAt = LocalDateTime.now();
     }
 }

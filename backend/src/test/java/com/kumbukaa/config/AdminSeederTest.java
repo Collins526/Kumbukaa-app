@@ -34,7 +34,8 @@ class AdminSeederTest {
 
         assertEquals(passwordHash, existing.getPasswordHash());
         assertFalse(existing.getMustChangePassword());
-        verify(userRepository, never()).save(any(User.class));
+        assertEquals("ROLE_ADMIN,ROLE_USER", existing.getRoles());
+        verify(userRepository).save(existing);
     }
 
     @Test
@@ -48,7 +49,7 @@ class AdminSeederTest {
         var captor = org.mockito.ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
         User created = captor.getValue();
-        assertEquals("ROLE_ADMIN", created.getRoles());
+        assertEquals("ROLE_ADMIN,ROLE_USER", created.getRoles());
         assertTrue(Boolean.TRUE.equals(created.getMustChangePassword()));
         assertTrue(new BCryptPasswordEncoder().matches("temporary-password", created.getPasswordHash()));
     }
@@ -71,6 +72,32 @@ class AdminSeederTest {
         assertEquals(passwordHash, existing.getPasswordHash());
         assertTrue(existing.getMustChangePassword());
         verify(userRepository).save(existing);
+    }
+
+    @Test
+    void runDoesNotGrantAdminToFormerlyDesignatedAccount() throws Exception {
+        UserRepository userRepository = mock(UserRepository.class);
+        User defaultAdmin = User.builder()
+                .id(1L)
+                .email("admin@example.com")
+                .roles("ROLE_ADMIN,ROLE_USER")
+                .accountStatus("ACTIVE")
+                .mustChangePassword(false)
+                .build();
+        User formerAdmin = User.builder()
+                .id(2L)
+                .email("collinskibet526@gmail.com")
+                .roles("ROLE_USER")
+                .accountStatus("ACTIVE")
+                .mustChangePassword(false)
+                .build();
+        when(userRepository.findByEmail("admin@example.com")).thenReturn(Optional.of(defaultAdmin));
+        when(userRepository.findByEmail("collinskibet526@gmail.com")).thenReturn(Optional.of(formerAdmin));
+
+        createSeeder(userRepository).run(new DefaultApplicationArguments(new String[0]));
+
+        assertEquals("ROLE_USER", formerAdmin.getRoles());
+        verify(userRepository, never()).save(formerAdmin);
     }
 
     private AdminSeeder createSeeder(UserRepository userRepository) throws Exception {

@@ -12,11 +12,6 @@ import java.util.Map;
 @RestController
 public class HealthController {
 
-    @GetMapping("/health")
-    public ResponseEntity<Map<String, Object>> health() {
-        return buildHealthResponse();
-    }
-
     @GetMapping("/")
     public ResponseEntity<Map<String, Object>> root() {
         return buildHealthResponse();

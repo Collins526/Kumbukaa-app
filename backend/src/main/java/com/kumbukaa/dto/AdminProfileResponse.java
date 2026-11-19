@@ -16,4 +16,5 @@ public class AdminProfileResponse {
     private String fullName;
     private String email;
     private Boolean mustChangePassword;
+    private String accessRole;
 }

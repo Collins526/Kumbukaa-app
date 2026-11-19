@@ -42,6 +42,21 @@ class AdminControllerTest {
     }
 
     @Test
+    void getAllUsersWithLoans_allowsAdminAuthorityWithoutPrefix() {
+        AdminService svc = mock(AdminService.class);
+        AdminController controller = new AdminController(svc, mock(AuthService.class), mock(JwtTokenProvider.class));
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        User.builder().id(5L).email("admin@example.com").roles("ADMIN").build(),
+                        null,
+                        List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ADMIN"))));
+        when(svc.listAllUsersWithLoans()).thenReturn(List.of(new UserSummaryDto()));
+
+        assertEquals(200, controller.getAllUsersWithLoans().getStatusCode().value());
+        verify(svc).listAllUsersWithLoans();
+    }
+
+    @Test
     void getAllUsersWithLoans_forbidsNonAdmin() {
         AdminService svc = mock(AdminService.class);
         AuthService authService = mock(AuthService.class);
@@ -55,6 +70,42 @@ class AdminControllerTest {
         var resp = controller.getAllUsersWithLoans();
         assertEquals(403, resp.getStatusCode().value());
         verifyNoInteractions(svc);
+    }
+
+    @Test
+    void formerDesignatedEmailDoesNotGrantAdminDataAccess() {
+        AdminService svc = mock(AdminService.class);
+        AdminController controller = new AdminController(svc, mock(AuthService.class), mock(JwtTokenProvider.class));
+        User user = User.builder()
+                .id(6L)
+                .email("collinskibet526@gmail.com")
+                .roles("ROLE_USER")
+                .build();
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                user, null, List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"))));
+
+        assertEquals(403, controller.getAdminProfile().getStatusCode().value());
+        assertEquals(403, controller.getAllUsersWithLoans().getStatusCode().value());
+        verifyNoInteractions(svc);
+    }
+
+    @Test
+    void supportCanReadAdminProfileAndUserListButCannotCreateAdmins() {
+        AdminService svc = mock(AdminService.class);
+        AdminController controller = new AdminController(svc, mock(AuthService.class), mock(JwtTokenProvider.class));
+        User support = User.builder().id(8L).email("support@example.com").fullName("Support").roles("ROLE_SUPPORT_AGENT").build();
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                support, null, List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_SUPPORT_AGENT"))));
+        when(svc.listAllUsersWithLoans()).thenReturn(List.of(new UserSummaryDto()));
+
+        assertEquals(200, controller.getAdminProfile().getStatusCode().value());
+        assertEquals("SUPPORT", controller.getAdminProfile().getBody().getAccessRole());
+        assertEquals(200, controller.getAllUsersWithLoans().getStatusCode().value());
+        var createResponse = controller.createAdminUser(new com.kumbukaa.dto.AdminCreateRequest(
+                "Another Admin", "new@example.com", "+254700000000", "SecurePassword123", "SecurePassword123"));
+        assertEquals(403, createResponse.getStatusCode().value());
+        verify(svc).listAllUsersWithLoans();
+        verifyNoMoreInteractions(svc);
     }
 
     @Test

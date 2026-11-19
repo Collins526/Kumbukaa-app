@@ -35,18 +35,18 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request, jakarta.servlet.http.HttpServletRequest httpRequest) {
         try {
-            return ResponseEntity.ok(authService.login(request));
+            return ResponseEntity.ok(authService.login(request, httpRequest.getHeader("User-Agent")));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new AuthResponse(null, null, null, e.getMessage(), null, null));
         }
     }
 
     @PostMapping("/admin/login")
-    public ResponseEntity<AuthResponse> adminLogin(@RequestBody LoginRequest request) {
+    public ResponseEntity<AuthResponse> adminLogin(@RequestBody LoginRequest request, jakarta.servlet.http.HttpServletRequest httpRequest) {
         try {
-            return ResponseEntity.ok(authService.adminLogin(request));
+            return ResponseEntity.ok(authService.adminLogin(request, httpRequest.getHeader("User-Agent")));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new AuthResponse(null, null, null, e.getMessage(), null, null));
         }
@@ -62,9 +62,9 @@ public class AuthController {
     }
 
     @PostMapping("/login-otp")
-    public ResponseEntity<AuthResponse> loginWithOtp(@RequestBody LoginWithOtpRequest request) {
+    public ResponseEntity<AuthResponse> loginWithOtp(@RequestBody LoginWithOtpRequest request, jakarta.servlet.http.HttpServletRequest httpRequest) {
         try {
-            return ResponseEntity.ok(authService.loginWithOtp(request));
+            return ResponseEntity.ok(authService.loginWithOtp(request, httpRequest.getHeader("User-Agent")));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new AuthResponse(null, null, null, e.getMessage(), null, null));
         } catch (IllegalStateException e) {

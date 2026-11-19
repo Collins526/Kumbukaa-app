@@ -36,6 +36,7 @@ class AdminServiceTest {
                 .email("alice@example.com")
                 .phoneNumber("+254700000001")
                 .roles("ROLE_USER,ROLE_ADMIN")
+                .verificationStatus(null)
                 .build();
 
         when(userRepository.findAll()).thenReturn(List.of(user));
@@ -53,6 +54,7 @@ class AdminServiceTest {
         assertEquals("alice@example.com", dto.getEmail());
         assertEquals("+254700000001", dto.getPhoneNumber());
         assertTrue(dto.getAdmin());
+        assertEquals("PENDING", dto.getVerificationStatus());
     }
 
     @Test

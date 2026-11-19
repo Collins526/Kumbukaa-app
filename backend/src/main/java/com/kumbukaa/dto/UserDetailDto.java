@@ -21,6 +21,14 @@ public class UserDetailDto {
     private String email;
     private String phoneNumber;
     private Boolean admin;
+    private String role;
+    private String status;
+    private String verificationStatus;
+    private java.time.LocalDateTime createdAt;
+    @JsonInclude(JsonInclude.Include.ALWAYS)
+    private java.time.LocalDateTime lastSeenAt;
+    @JsonInclude(JsonInclude.Include.ALWAYS)
+    private String lastDevice;
     private List<LoanResponse> loansLent;
     private List<LoanResponse> loansBorrowed;
 }

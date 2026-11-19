@@ -1,10 +1,14 @@
 package com.kumbukaa.config;
 
+import com.kumbukaa.entity.User;
 import com.kumbukaa.repository.UserRepository;
+import com.kumbukaa.util.UserRoleUtils;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -13,20 +17,26 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
 public class TokenAuthenticationFilter extends OncePerRequestFilter {
 
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final String defaultAdminEmail;
 
-    public TokenAuthenticationFilter(UserRepository userRepository, JwtTokenProvider jwtTokenProvider) {
+    @Autowired
+    public TokenAuthenticationFilter(
+            UserRepository userRepository,
+            JwtTokenProvider jwtTokenProvider,
+            @Value("${app.admin.email:admin@localhost}") String defaultAdminEmail) {
         this.userRepository = userRepository;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.defaultAdminEmail = defaultAdminEmail;
+    }
+
+    public TokenAuthenticationFilter(UserRepository userRepository, JwtTokenProvider jwtTokenProvider) {
+        this(userRepository, jwtTokenProvider, "admin@localhost");
     }
 
     @Override
@@ -67,17 +77,23 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
         }
 
         var authentication = userRepository.findById(userId)
+            .filter(user -> !"SUSPENDED".equals(user.getAccountStatus()))
             .map(user -> {
                 String roles = user.getRoles();
-                List<org.springframework.security.core.GrantedAuthority> authorities = Collections.emptyList();
-                if (roles != null && !roles.isBlank()) {
-                    authorities = Arrays.stream(roles.split(","))
-                        .map(s -> s.trim())
-                        .filter(s -> !s.isBlank())
-                        .map(org.springframework.security.core.authority.SimpleGrantedAuthority::new)
-                        .collect(Collectors.toList());
+                boolean isDesignatedAdmin = user.getEmail() != null && (
+                        user.getEmail().equalsIgnoreCase(defaultAdminEmail)
+                                || user.getEmail().equalsIgnoreCase("admin@localhost")
+                );
+                if (isDesignatedAdmin && (roles == null || !UserRoleUtils.hasRole(roles, "ADMIN"))) {
+                    roles = (roles == null || roles.isBlank()) ? "ROLE_ADMIN,ROLE_USER" : roles + ",ROLE_ADMIN";
+                    user.setRoles(roles);
+                    try {
+                        userRepository.save(user);
+                    } catch (Exception ignored) {
+                    }
                 }
-                return new UsernamePasswordAuthenticationToken(user, null, authorities);
+                return new UsernamePasswordAuthenticationToken(
+                        user, null, UserRoleUtils.authorities(roles));
             })
             .orElse(null);
 

@@ -40,6 +40,7 @@ public class LoanLentService {
                 .userId(userId)
                 .personName(request.getPersonName())
                 .phoneNumber(PhoneNumberUtils.normalize(request.getPhoneNumber()))
+                .counterpartyEmail(request.getCounterpartyEmail())
                 .amountLent(request.getAmountLent())
                 .amountPaid(0.0)
                 .balance(request.getAmountLent())
@@ -70,6 +71,7 @@ public class LoanLentService {
 
         loan.setPersonName(request.getPersonName());
         loan.setPhoneNumber(PhoneNumberUtils.normalize(request.getPhoneNumber()));
+        loan.setCounterpartyEmail(request.getCounterpartyEmail());
 
         if (request.getAmountLent() != null && request.getAmountLent() > 0) {
             loan.setAmountLent(request.getAmountLent());

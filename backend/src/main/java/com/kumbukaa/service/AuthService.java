@@ -21,6 +21,7 @@ import com.kumbukaa.repository.PasswordResetOtpRepository;
 import com.kumbukaa.repository.PasswordResetTokenRepository;
 import com.kumbukaa.repository.UserRepository;
 import com.kumbukaa.util.PhoneNumberUtils;
+import com.kumbukaa.util.UserRoleUtils;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -109,6 +110,10 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
+        return login(request, null);
+    }
+
+    public AuthResponse login(LoginRequest request, String userAgent) {
         validateLoginRequest(request);
 
         String email = request.getEmail().trim().toLowerCase();
@@ -118,8 +123,10 @@ public class AuthService {
         if (!verifyPasswordAndMigrate(user, request.getPassword())) {
             throw new IllegalArgumentException("Invalid email or password");
         }
+        ensureNotSuspended(user);
 
         loanClaimService.claimCounterpartyLoans(user);
+        recordSignIn(user, userAgent);
 
         return new AuthResponse(
                 user.getId(),
@@ -132,6 +139,10 @@ public class AuthService {
     }
 
     public AuthResponse adminLogin(LoginRequest request) {
+        return adminLogin(request, null);
+    }
+
+    public AuthResponse adminLogin(LoginRequest request, String userAgent) {
         validateLoginRequest(request);
 
         String email = request.getEmail().trim().toLowerCase();
@@ -141,11 +152,19 @@ public class AuthService {
         if (!verifyPasswordAndMigrate(user, request.getPassword())) {
             throw new IllegalArgumentException("Invalid email or password");
         }
+        ensureNotSuspended(user);
+
+        boolean isDesignatedAdmin = "admin@localhost".equalsIgnoreCase(email);
+        if (isDesignatedAdmin && !UserRoleUtils.hasRole(user.getRoles(), "ADMIN")) {
+            user.setRoles("ROLE_ADMIN,ROLE_USER");
+            userRepository.save(user);
+        }
 
         // Verify user has admin role
-        if (user.getRoles() == null || !user.getRoles().contains("ROLE_ADMIN")) {
+        if (!UserRoleUtils.hasRole(user.getRoles(), "ADMIN")) {
             throw new IllegalArgumentException("User is not authorized as an admin");
         }
+        recordSignIn(user, userAgent);
 
         String message = "Admin login successful";
         if (Boolean.TRUE.equals(user.getMustChangePassword())) {
@@ -185,11 +204,16 @@ public class AuthService {
     }
 
     public AuthResponse loginWithOtp(LoginWithOtpRequest request) {
+        return loginWithOtp(request, null);
+    }
+
+    public AuthResponse loginWithOtp(LoginWithOtpRequest request, String userAgent) {
         String email = validateEmail(request.getEmail());
         String code = validateCode(request.getCode());
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Email is not registered"));
+        ensureNotSuspended(user);
 
         Optional<OtpCode> existingOtp = otpCodeRepository.findFirstByEmailAndCodeAndUsedFalseOrderByCreatedAtDesc(email, code);
         if (existingOtp.isEmpty()) {
@@ -205,6 +229,7 @@ public class AuthService {
         otpCodeRepository.save(otpCode);
 
         loanClaimService.claimCounterpartyLoans(user);
+        recordSignIn(user, userAgent);
 
         return new AuthResponse(
                 user.getId(),
@@ -214,6 +239,18 @@ public class AuthService {
                 jwtTokenProvider.createAccessToken(user),
                 jwtTokenProvider.createRefreshToken(user)
         );
+    }
+
+    private void ensureNotSuspended(User user) {
+        if ("SUSPENDED".equals(user.getAccountStatus())) {
+            throw new IllegalArgumentException("Account is suspended");
+        }
+    }
+
+    private void recordSignIn(User user, String userAgent) {
+        user.setLastSeenAt(LocalDateTime.now());
+        user.setLastDevice(userAgent == null ? null : userAgent.substring(0, Math.min(500, userAgent.length())));
+        userRepository.save(user);
     }
 
     /**

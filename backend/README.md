@@ -75,7 +75,8 @@ Track money the user owes to others.
 
 ## 7. How to Run
 
-1. **Local development**: The default `local` profile uses a separate H2 database at `data/kumbukaa-local.mv.db`. It does not need PostgreSQL credentials or email configuration.
+1. **Local development**: The default `local` profile connects to the configured Supabase PostgreSQL database using the database settings in `backend/.env` (or equivalent environment variables). Local and deployed instances therefore use the same database; changes made locally affect the shared data. Keep the Supabase credentials configured and do not set the datasource to H2.
+   The `/health` endpoint reports the backend and database status. Mail is optional and is excluded from the health status by default; set `MANAGEMENT_HEALTH_MAIL_ENABLED=true` to include SMTP availability in the health check.
 2. **Start the App**:
    ```bash
    mvn spring-boot:run

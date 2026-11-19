@@ -222,6 +222,7 @@ function App() {
   async function createLoan(values: {
     personName: string;
     phoneNumber: string;
+    counterpartyEmail: string;
     amount: number;
     date: string;
     dueDate: string;
@@ -230,6 +231,7 @@ function App() {
     const request = {
       personName: values.personName,
       phoneNumber: values.phoneNumber,
+      ...(values.counterpartyEmail ? { counterpartyEmail: values.counterpartyEmail } : {}),
       ...(selectedKind === "lent"
         ? { amountLent: values.amount, dateLent: values.date }
         : { amountBorrowed: values.amount, dateBorrowed: values.date }),
@@ -1002,6 +1004,7 @@ function LoanModal({
   onSubmit: (values: {
     personName: string;
     phoneNumber: string;
+    counterpartyEmail: string;
     amount: number;
     date: string;
     dueDate: string;
@@ -1021,6 +1024,7 @@ function LoanModal({
       await onSubmit({
         personName: String(form.get("personName") ?? "").trim(),
         phoneNumber: String(form.get("phoneNumber") ?? "").trim(),
+        counterpartyEmail: String(form.get("counterpartyEmail") ?? "").trim(),
         amount: Number(form.get("amount")),
         date: String(form.get("date") ?? ""),
         dueDate: String(form.get("dueDate") ?? ""),
@@ -1051,6 +1055,9 @@ function LoanModal({
         </FormField>
         <FormField label="Phone number">
           <input name="phoneNumber" type="tel" required placeholder="+254 7XX XXX XXX" />
+        </FormField>
+        <FormField label="Counterparty email (optional)">
+          <input name="counterpartyEmail" type="email" autoComplete="email" placeholder="name@example.com" />
         </FormField>
         <FormField label="Amount (KES)">
           <input name="amount" type="number" min="0.01" step="0.01" required placeholder="0.00" />

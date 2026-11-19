@@ -2,6 +2,7 @@ package com.kumbukaa.service;
 
 import com.kumbukaa.config.JwtTokenProvider;
 import com.kumbukaa.dto.ForgotPasswordRequest;
+import com.kumbukaa.dto.LoginRequest;
 import com.kumbukaa.dto.ResetPasswordRequest;
 import com.kumbukaa.dto.VerifyOtpRequest;
 import com.kumbukaa.entity.PasswordResetOtp;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
@@ -134,5 +136,33 @@ class AuthServicePasswordResetTest {
         assertTrue(otp.getUsed());
         verify(passwordResetTokenRepository).save(token);
         verify(passwordResetOtpRepository, atLeastOnce()).save(any(PasswordResetOtp.class));
+    }
+
+    @Test
+    void login_rejectsSuspendedAccount() {
+        User user = User.builder().id(10L).email("blocked@example.com")
+                .accountStatus("SUSPENDED")
+                .passwordHash(new BCryptPasswordEncoder().encode("Password@123")).build();
+        when(userRepository.findByEmail("blocked@example.com")).thenReturn(Optional.of(user));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> authService.login(new LoginRequest("blocked@example.com", "Password@123"), "test-device"));
+        verify(loanClaimService, never()).claimCounterpartyLoans(any());
+        verify(userRepository, never()).save(user);
+    }
+
+    @Test
+    void login_persistsSignInTimeAndUserAgent() {
+        User user = User.builder().id(11L).email("active@example.com")
+                .passwordHash(new BCryptPasswordEncoder().encode("Password@123")).build();
+        when(userRepository.findByEmail("active@example.com")).thenReturn(Optional.of(user));
+        when(jwtTokenProvider.createAccessToken(user)).thenReturn("access");
+        when(jwtTokenProvider.createRefreshToken(user)).thenReturn("refresh");
+
+        authService.login(new LoginRequest("active@example.com", "Password@123"), "browser-test");
+
+        assertNotNull(user.getLastSeenAt());
+        assertEquals("browser-test", user.getLastDevice());
+        verify(userRepository).save(user);
     }
 }

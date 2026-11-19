@@ -26,6 +26,7 @@ public class LoanLent {
     private Long userId;
     private String personName;
     private String phoneNumber;
+    private String counterpartyEmail;
     private Double amountLent;
     private Double amountPaid;
     private Double balance;

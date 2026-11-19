@@ -40,6 +40,7 @@ public class LoanBorrowedService {
                 .userId(userId)
                 .personName(request.getPersonName())
                 .phoneNumber(PhoneNumberUtils.normalize(request.getPhoneNumber()))
+                .counterpartyEmail(request.getCounterpartyEmail())
                 .amountBorrowed(request.getAmountBorrowed())
                 .amountPaid(0.0)
                 .balance(request.getAmountBorrowed())
@@ -70,6 +71,7 @@ public class LoanBorrowedService {
 
         loan.setPersonName(request.getPersonName());
         loan.setPhoneNumber(PhoneNumberUtils.normalize(request.getPhoneNumber()));
+        loan.setCounterpartyEmail(request.getCounterpartyEmail());
 
         if (request.getAmountBorrowed() != null && request.getAmountBorrowed() > 0) {
             loan.setAmountBorrowed(request.getAmountBorrowed());

@@ -64,6 +64,7 @@ public class LoanClaimService {
 
             String lenderName = lookupUserFullName(source.getUserId());
             String lenderPhone = lookupUserPhone(source.getUserId());
+            String lenderEmail = lookupUserEmail(source.getUserId());
 
             if (loanBorrowedRepository.existsByUserIdAndPhoneNumberAndAmountBorrowedAndDateBorrowed(
                     newUser.getId(), lenderPhone, source.getAmountLent(), source.getDateLent())) {
@@ -74,6 +75,7 @@ public class LoanClaimService {
                     .userId(newUser.getId())
                     .personName(lenderName)
                     .phoneNumber(lenderPhone)
+                    .counterpartyEmail(lenderEmail)
                     .amountBorrowed(source.getAmountLent())
                     .amountPaid(source.getAmountPaid())
                     .balance(source.getBalance())
@@ -101,6 +103,7 @@ public class LoanClaimService {
 
             String borrowerName = lookupUserFullName(source.getUserId());
             String borrowerPhone = lookupUserPhone(source.getUserId());
+            String borrowerEmail = lookupUserEmail(source.getUserId());
 
             if (loanLentRepository.existsByUserIdAndPhoneNumberAndAmountLentAndDateLent(
                     newUser.getId(), borrowerPhone, source.getAmountBorrowed(), source.getDateBorrowed())) {
@@ -111,6 +114,7 @@ public class LoanClaimService {
                     .userId(newUser.getId())
                     .personName(borrowerName)
                     .phoneNumber(borrowerPhone)
+                    .counterpartyEmail(borrowerEmail)
                     .amountLent(source.getAmountBorrowed())
                     .amountPaid(source.getAmountPaid())
                     .balance(source.getBalance())
@@ -140,5 +144,10 @@ public class LoanClaimService {
         return userRepository.findById(userId)
                 .map(User::getPhoneNumber)
                 .orElse("");
+    }
+
+    private String lookupUserEmail(Long userId) {
+        if (userId == null) return null;
+        return userRepository.findById(userId).map(User::getEmail).orElse(null);
     }
 }

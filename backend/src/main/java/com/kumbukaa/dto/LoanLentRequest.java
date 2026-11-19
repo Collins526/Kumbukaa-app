@@ -14,6 +14,7 @@ import java.time.LocalDate;
 public class LoanLentRequest {
     private String personName;
     private String phoneNumber;
+    private String counterpartyEmail;
     private Double amountLent;
     private LocalDate dateLent;
     private LocalDate dueDate;

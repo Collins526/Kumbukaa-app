@@ -120,6 +120,87 @@ Fields:
 - `createdAt`: LocalDateTime
 - `updatedAt`: LocalDateTime
 
+## Admin control center
+
+All `/api/admin/**` routes require a bearer token. Admin and support accounts may
+read the overview, user list/details, global loans, audit log, announcement list,
+and user notes. `GET /api/admin/profile` returns `accessRole` as `ADMIN` or
+`SUPPORT`. Admin role values stored as either `ADMIN` or `ROLE_ADMIN` are
+normalized to the same authority. All admin writes below require admin access;
+support is read-only.
+
+`GET /api/admin/users` and `GET /api/admin/users/{id}` include:
+
+```json
+{
+  "role": "USER",
+  "status": "ACTIVE",
+  "verificationStatus": "PENDING",
+  "lastSeenAt": "2026-11-18T10:00:00",
+  "lastDevice": "browser user-agent"
+}
+```
+
+Role/status/KYC writes use `PATCH /api/admin/users/{id}/role` with
+`{"role":"USER|ADMIN|SUPPORT_AGENT"}`, `/status` with
+`{"status":"ACTIVE|SUSPENDED"}`, and `/verification` with
+`{"verificationStatus":"PENDING|VERIFIED|REJECTED"}`. An administrator cannot
+demote or suspend their own administrator account. Suspended users cannot log in
+or use existing access tokens.
+
+### Dashboard and global loan data
+
+- `GET /api/admin/overview` returns
+  `{"totalAccounts":0,"activeAccounts":0,"totalLoans":0,"totalLent":0,"outstandingBalance":0,"overdueLoans":0,"overdueAmount":0,"monthlyVolume":[{"label":"2026-11","lent":0,"repaid":0}],"statusCounts":{"active":0,"overdue":0,"repaid":0}}`.
+  `activeAccounts` means signed in within seven days.
+- `GET /api/admin/loans` returns rows shaped as
+  `{"id":1,"kind":"LENT","accountId":1,"accountName":"Alice","accountEmail":"alice@example.com","counterpartyName":"Bob","counterpartyPhone":"+254700000000","counterpartyEmail":null,"amount":100,"amountPaid":0,"balance":100,"startedAt":"2026-11-01","dueDate":"2026-11-30","status":"ACTIVE","installments":[]}`.
+  `kind` is `LENT` or `BORROWED`; status is derived from balance and due date
+  where applicable. Installments contain `amount` and `paymentDate`.
+
+### Audit and internal notes
+
+- `GET /api/admin/audit-log` returns rows
+  `{"id":1,"action":"ACCOUNT_SUSPENDED","targetType":"USER","actorName":"Admin","targetId":2,"targetName":"Bob","details":"Account status changed to SUSPENDED","createdAt":"2026-11-18T10:00:00"}`.
+  `targetType` is `USER`, `LOAN`, `ANNOUNCEMENT`, or `ACCOUNT`; user timeline
+  entries can be selected by `targetType=USER`.
+- `GET /api/admin/users/{id}/notes` returns an array of
+  `{"id":1,"note":"Follow up","authorName":"Admin","createdAt":"2026-11-18T10:00:00"}`.
+- `POST /api/admin/users/{id}/notes` accepts `{"note":"Follow up"}` and returns
+  the created note.
+
+### Announcements and notifications
+
+- `GET /api/admin/announcements` returns rows
+  `{"id":1,"title":"Notice","message":"Text","audience":"ALL_USERS","channel":"IN_APP","createdAt":"2026-11-18T10:00:00","authorName":"Admin","recipientCount":3,"targetUserId":null,"targetName":null}`.
+- `POST /api/admin/announcements` accepts
+  `{"title":"Notice","message":"Text","audience":"ALL_USERS","channel":"IN_APP"}`.
+  Audiences: `ALL_USERS`, `BORROWERS_WITH_OVERDUE`, `LENDERS_ONLY`,
+  `ADMINISTRATORS`; channels: `IN_APP`, `EMAIL`. `SMS` is intentionally
+  unavailable and returns HTTP 400. For an individual message use
+  `{"title":"Notice","message":"Text","audience":"ALL_USERS","channel":"IN_APP","targetUserId":2}`;
+  `targetUserId` must refer to an existing account and takes precedence over
+  `audience` (including `ALL_USERS`); only that account receives the message.
+  Its response/list includes `targetUserId` and a persisted `targetName`, and
+  uses audience `TARGET_USER`. Email delivery uses
+  the configured SMTP/Resend provider.
+- `GET /api/notifications` returns the current user's rows
+  `{"id":1,"title":"Notice","message":"Text","createdAt":"2026-11-18T10:00:00","read":false}`.
+- `POST /api/notifications/{id}/read` marks only the signed-in user's
+  notification as read.
+
+### Overdue reminders
+
+- `POST /api/admin/loans/{kind}/{id}/remind` sends an email and returns
+  `{"sent":1}`. `{kind}` is required and must be `LENT` or `BORROWED`.
+- `POST /api/admin/reminders/overdue` sends email reminders for all overdue
+  loan rows and returns `{"sent":N}`. Both routes require stored
+  `counterpartyEmail`; missing email results in HTTP 409. Reminder delivery is
+  email-only.
+
+Loan create/read DTOs accept and expose optional `counterpartyEmail`, used for
+reminders.
+
 ---
 
 ## Dashboard
@@ -359,7 +440,7 @@ Check the health status of the backend API.
 
 ## Admin Endpoints
 
-Admin endpoints require a user with `ROLE_ADMIN` authority, typically authenticated via a JWT token.
+Admin write endpoints require a user with admin access, typically authenticated via a JWT token. Stored role values `ADMIN` and `ROLE_ADMIN` are treated equivalently; support agents can read admin data but cannot perform admin writes.
 
 ### POST /api/admin/login
 

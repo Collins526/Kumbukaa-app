@@ -22,6 +22,7 @@ public class LoanSummaryResponse {
     private Double balance;
     private String personName;
     private String phoneNumber;
+    private String counterpartyEmail;
     private OffsetDateTime dateLent;
     private OffsetDateTime dateBorrowed;
     private OffsetDateTime dueDate;

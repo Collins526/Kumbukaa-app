@@ -26,6 +26,7 @@ public class LoanBorrowed {
     private Long userId;
     private String personName;
     private String phoneNumber;
+    private String counterpartyEmail;
     private Double amountBorrowed;
     private Double amountPaid;
     private Double balance;

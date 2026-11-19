@@ -12,6 +12,9 @@ import com.kumbukaa.dto.UserSummaryDto;
 import com.kumbukaa.entity.User;
 import com.kumbukaa.service.AdminService;
 import com.kumbukaa.service.AuthService;
+import com.kumbukaa.util.UserRoleUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -26,17 +29,28 @@ public class AdminController {
     private final AdminService adminService;
     private final AuthService authService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final String defaultAdminEmail;
 
-    public AdminController(AdminService adminService, AuthService authService, JwtTokenProvider jwtTokenProvider) {
+    @Autowired
+    public AdminController(
+            AdminService adminService,
+            AuthService authService,
+            JwtTokenProvider jwtTokenProvider,
+            @Value("${app.admin.email:admin@localhost}") String defaultAdminEmail) {
         this.adminService = adminService;
         this.authService = authService;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.defaultAdminEmail = defaultAdminEmail;
+    }
+
+    public AdminController(AdminService adminService, AuthService authService, JwtTokenProvider jwtTokenProvider) {
+        this(adminService, authService, jwtTokenProvider, "admin@localhost");
     }
 
     @PostMapping("/admin/login")
-    public ResponseEntity<AuthResponse> adminLogin(@RequestBody LoginRequest request) {
+    public ResponseEntity<AuthResponse> adminLogin(@RequestBody LoginRequest request, jakarta.servlet.http.HttpServletRequest httpRequest) {
         try {
-            return ResponseEntity.ok(authService.adminLogin(request));
+            return ResponseEntity.ok(authService.adminLogin(request, httpRequest.getHeader("User-Agent")));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new AuthResponse(null, null, null, e.getMessage(), null, null));
         }
@@ -44,13 +58,13 @@ public class AdminController {
 
     @GetMapping("/admin/users")
     public ResponseEntity<List<UserSummaryDto>> getAllUsersWithLoans() {
-        if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        if (!canReadAdminData()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         return ResponseEntity.ok(adminService.listAllUsersWithLoans());
     }
 
     @GetMapping("/admin/users/{id}")
     public ResponseEntity<UserDetailDto> getUserById(@PathVariable Long id) {
-        if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        if (!canReadAdminData()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         try {
             return ResponseEntity.ok(adminService.getUserById(id));
         } catch (IllegalArgumentException e) {
@@ -82,7 +96,7 @@ public class AdminController {
         if (!(principal instanceof User admin)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         if (admin.getId().equals(id)) return ResponseEntity.status(HttpStatus.CONFLICT).build();
         try {
-            adminService.deleteUser(id);
+            adminService.deleteUser(id, admin);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
         }
@@ -139,16 +153,39 @@ public class AdminController {
         }
     }
 
+    private boolean isDesignatedAdmin(String email) {
+        if (email == null || email.isBlank()) return false;
+        String normalized = email.trim().toLowerCase(java.util.Locale.ROOT);
+        return normalized.equals("admin@localhost")
+                || (defaultAdminEmail != null && normalized.equals(defaultAdminEmail.trim().toLowerCase(java.util.Locale.ROOT)));
+    }
+
     private boolean isAdmin() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) return false;
-        return auth.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        if (UserRoleUtils.hasAuthority(auth, "ADMIN")) return true;
+        if (auth != null && auth.getPrincipal() instanceof User user) {
+            if (UserRoleUtils.hasRole(user.getRoles(), "ADMIN")) return true;
+            if (isDesignatedAdmin(user.getEmail())) return true;
+        }
+        return false;
+    }
+
+    private boolean isSupport() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (UserRoleUtils.hasAuthority(auth, "SUPPORT_AGENT")) return true;
+        if (auth != null && auth.getPrincipal() instanceof User user) {
+            return UserRoleUtils.hasRole(user.getRoles(), "SUPPORT_AGENT");
+        }
+        return false;
+    }
+
+    private boolean canReadAdminData() {
+        return isAdmin() || isSupport();
     }
 
     @GetMapping("/admin/profile")
     public ResponseEntity<AdminProfileResponse> getAdminProfile() {
-        if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        if (!canReadAdminData()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         var auth = SecurityContextHolder.getContext().getAuthentication();
         Object principal = auth.getPrincipal();
         if (!(principal instanceof User)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -158,6 +195,7 @@ public class AdminController {
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .mustChangePassword(Boolean.TRUE.equals(user.getMustChangePassword()))
+                .accessRole(isAdmin() ? "ADMIN" : "SUPPORT")
                 .build();
         return ResponseEntity.ok(dto);
     }
@@ -208,5 +246,139 @@ public class AdminController {
         public void setCurrentPassword(String currentPassword) { this.currentPassword = currentPassword; }
         public String getNewPassword() { return newPassword; }
         public void setNewPassword(String newPassword) { this.newPassword = newPassword; }
+    }
+
+    @GetMapping("/admin/overview")
+    public ResponseEntity<?> overview() {
+        if (!canReadAdminData()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.ok(adminService.overview());
+    }
+
+    @GetMapping("/admin/loans")
+    public ResponseEntity<?> globalLoans() {
+        if (!canReadAdminData()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.ok(adminService.globalLoans());
+    }
+
+    @GetMapping("/admin/audit-log")
+    public ResponseEntity<?> auditLog() {
+        if (!canReadAdminData()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.ok(adminService.auditLog());
+    }
+
+    @GetMapping("/admin/users/{id}/notes")
+    public ResponseEntity<?> getNotes(@PathVariable Long id) {
+        if (!canReadAdminData()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        try { return ResponseEntity.ok(adminService.notes(id)); }
+        catch (IllegalArgumentException ex) { return ResponseEntity.notFound().build(); }
+    }
+
+    @PostMapping("/admin/users/{id}/notes")
+    public ResponseEntity<?> addNote(@PathVariable Long id, @RequestBody NoteRequest request) {
+        if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        try { return ResponseEntity.status(HttpStatus.CREATED).body(adminService.addNote(id, request == null ? null : request.getNote(), currentUser())); }
+        catch (IllegalArgumentException ex) { return ResponseEntity.badRequest().body(java.util.Map.of("message", ex.getMessage())); }
+    }
+
+    @GetMapping("/admin/announcements")
+    public ResponseEntity<?> announcements() {
+        if (!canReadAdminData()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.ok(adminService.announcements());
+    }
+
+    @PostMapping("/admin/announcements")
+    public ResponseEntity<?> createAnnouncement(@RequestBody com.kumbukaa.dto.AnnouncementRequest request) {
+        if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        try { return ResponseEntity.status(HttpStatus.CREATED).body(adminService.createAnnouncement(request, currentUser())); }
+        catch (IllegalArgumentException ex) { return ResponseEntity.badRequest().body(java.util.Map.of("message", ex.getMessage())); }
+        catch (IllegalStateException ex) { return ResponseEntity.status(HttpStatus.CONFLICT).body(java.util.Map.of("message", ex.getMessage())); }
+    }
+
+    @GetMapping("/notifications")
+    public ResponseEntity<?> notifications() {
+        User user = currentUser();
+        if (user == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.ok(adminService.notifications(user.getId()));
+    }
+
+    @PostMapping("/notifications/{id}/read")
+    public ResponseEntity<?> markNotificationRead(@PathVariable Long id) {
+        User user = currentUser();
+        if (user == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        try {
+            adminService.markNotificationRead(id, user.getId());
+            return ResponseEntity.ok(new MessageResponse("notification marked as read"));
+        } catch (IllegalArgumentException ex) { return ResponseEntity.notFound().build(); }
+    }
+
+    @PatchMapping("/admin/users/{id}/role")
+    public ResponseEntity<?> changeRole(@PathVariable Long id, @RequestBody RoleRequest request) {
+        if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        try {
+            adminService.changeRole(id, request == null ? null : request.getRole(), currentUser());
+            return ResponseEntity.ok(adminService.getUserById(id));
+        } catch (IllegalArgumentException ex) { return ResponseEntity.badRequest().body(java.util.Map.of("message", ex.getMessage())); }
+        catch (IllegalStateException ex) { return ResponseEntity.status(HttpStatus.CONFLICT).body(java.util.Map.of("message", ex.getMessage())); }
+    }
+
+    @PatchMapping("/admin/users/{id}/status")
+    public ResponseEntity<?> changeStatus(@PathVariable Long id, @RequestBody StatusRequest request) {
+        if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        try {
+            adminService.setAccountStatus(id, request == null ? null : request.getStatus(), currentUser());
+            return ResponseEntity.ok(adminService.getUserById(id));
+        } catch (IllegalArgumentException ex) { return ResponseEntity.badRequest().body(java.util.Map.of("message", ex.getMessage())); }
+        catch (IllegalStateException ex) { return ResponseEntity.status(HttpStatus.CONFLICT).body(java.util.Map.of("message", ex.getMessage())); }
+    }
+
+    @PatchMapping("/admin/users/{id}/verification")
+    public ResponseEntity<?> changeVerification(@PathVariable Long id, @RequestBody VerificationRequest request) {
+        if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        try {
+            adminService.setVerificationStatus(id, request == null ? null : request.getVerificationStatus(), currentUser());
+            return ResponseEntity.ok(adminService.getUserById(id));
+        } catch (IllegalArgumentException ex) { return ResponseEntity.badRequest().body(java.util.Map.of("message", ex.getMessage())); }
+    }
+
+    @PostMapping("/admin/loans/{kind}/{id}/remind")
+    public ResponseEntity<?> remindLoan(@PathVariable String kind, @PathVariable Long id) {
+        if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        try { return ResponseEntity.ok(new ReminderResponse(adminService.sendOverdueReminder(id, kind, currentUser()))); }
+        catch (IllegalArgumentException ex) { return ResponseEntity.badRequest().body(java.util.Map.of("message", ex.getMessage())); }
+        catch (IllegalStateException ex) { return ResponseEntity.status(HttpStatus.CONFLICT).body(java.util.Map.of("message", ex.getMessage())); }
+    }
+
+    @PostMapping("/admin/reminders/overdue")
+    public ResponseEntity<?> remindAllOverdue() {
+        if (!isAdmin()) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        try { return ResponseEntity.ok(new ReminderResponse(adminService.sendOverdueReminders(currentUser()))); }
+        catch (IllegalStateException ex) { return ResponseEntity.status(HttpStatus.CONFLICT).body(java.util.Map.of("message", ex.getMessage())); }
+    }
+
+    public static class RoleRequest {
+        private String role;
+        public String getRole() { return role; }
+        public void setRole(String role) { this.role = role; }
+    }
+    public static class StatusRequest {
+        private String status;
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
+    }
+    public static class VerificationRequest {
+        private String verificationStatus;
+        public String getVerificationStatus() { return verificationStatus; }
+        public void setVerificationStatus(String verificationStatus) { this.verificationStatus = verificationStatus; }
+    }
+    public static class NoteRequest {
+        private String note;
+        public String getNote() { return note; }
+        public void setNote(String note) { this.note = note; }
+    }
+    public record ReminderResponse(int sent) {}
+
+    private User currentUser() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getPrincipal() instanceof User user ? user : null;
     }
 }
