@@ -538,8 +538,13 @@ tbody tr:hover { background: #fcfdfc; }
 .admin-modal-close:hover { background: #f6f8f8; color: #42514c; }
 .admin-modal-content, .admin-modal-form { display: grid; gap: 13px; padding: 17px 19px 19px; }
 .admin-modal-form { gap: 12px; }
-.admin-modal-form > label { display: grid; gap: 5px; color: #56636b; font-size: 10px; font-weight: 600; }
+.admin-modal-form > label, .admin-modal-form > .admin-password-field { display: grid; gap: 5px; color: #56636b; font-size: 10px; font-weight: 600; }
 .admin-modal-form input { width: 100%; min-height: 37px; padding: 8px 10px; border: 1px solid #e1e7e9; border-radius: 6px; background: #fff; color: #303e46; font-size: 11px; }
+.admin-password-control { position: relative; display: block; }
+.admin-password-control input { padding-right: 40px; }
+.admin-password-toggle { position: absolute; top: 50%; right: 6px; display: grid; width: 28px; height: 28px; place-items: center; padding: 0; transform: translateY(-50%); border: 0; border-radius: 5px; background: transparent; color: #83918a; }
+.admin-password-toggle:hover { background: #f0f5f2; color: #347d69; }
+.admin-password-toggle:focus-visible { outline: 2px solid #a7d6c6; outline-offset: 1px; }
 .admin-modal-form input:focus { border-color: #96bda7; outline: 2px solid #d8ebe0; }
 .admin-modal-description { margin: 0 0 1px; color: #7c8991; font-size: 10px; line-height: 1.6; }
 .admin-modal-description strong { color: #43515a; }

@@ -11,6 +11,7 @@ import {
   Clock3,
   Download,
   Eye,
+  EyeOff,
   FileText,
   HandCoins,
   KeyRound,
@@ -1179,8 +1180,8 @@ function AdminWorkspace({
                 <label>Full name<input name="fullName" autoComplete="name" required /></label>
                 <label>Email address<input name="email" type="email" autoComplete="email" required /></label>
                 <label>Phone number<input name="phoneNumber" type="tel" autoComplete="tel" required /></label>
-                <label>Password<input name="password" type="password" autoComplete="new-password" minLength={8} required /></label>
-                <label>Confirm password<input name="confirmPassword" type="password" autoComplete="new-password" minLength={8} required /></label>
+                <AdminPasswordInput label="Password" name="password" autoComplete="new-password" minLength={8} />
+                <AdminPasswordInput label="Confirm password" name="confirmPassword" autoComplete="new-password" minLength={8} />
                 {accountError && <div className="admin-form-error" role="alert">{accountError}</div>}
                 <AdminModalActions busy={busy} submitLabel="Create administrator" onCancel={closeModal} />
               </form>
@@ -1188,8 +1189,8 @@ function AdminWorkspace({
             {modal === "reset" && selectedUser && (
               <form className="admin-modal-form" onSubmit={(event) => void resetUserPassword(event)}>
                 <p className="admin-modal-description">Set a new password for <strong>{accountLabel(selectedUser)}</strong>.</p>
-                <label>New password<input name="password" type="password" autoComplete="new-password" minLength={8} required /></label>
-                <label>Confirm password<input name="confirmPassword" type="password" autoComplete="new-password" minLength={8} required /></label>
+                <AdminPasswordInput label="New password" name="password" autoComplete="new-password" minLength={8} />
+                <AdminPasswordInput label="Confirm password" name="confirmPassword" autoComplete="new-password" minLength={8} />
                 {accountError && <div className="admin-form-error" role="alert">{accountError}</div>}
                 <AdminModalActions busy={busy} submitLabel="Reset password" onCancel={closeModal} />
               </form>
@@ -1538,12 +1539,50 @@ function PasswordForm({
 }) {
   return (
     <form className="admin-modal-form admin-password-form" onSubmit={onSubmit}>
-      {!forced && <label>Current password<input name="currentPassword" type="password" autoComplete="current-password" required /></label>}
-      <label>New password<input name="newPassword" type="password" autoComplete="new-password" minLength={8} required /></label>
-      <label>Confirm new password<input name="confirmPassword" type="password" autoComplete="new-password" minLength={8} required /></label>
+      {!forced && <AdminPasswordInput label="Current password" name="currentPassword" autoComplete="current-password" />}
+      <AdminPasswordInput label="New password" name="newPassword" autoComplete="new-password" minLength={8} />
+      <AdminPasswordInput label="Confirm new password" name="confirmPassword" autoComplete="new-password" minLength={8} />
       {error && <div className="admin-form-error" role="alert">{error}</div>}
       <div className="admin-modal-actions">{!forced && <span className="admin-form-hint">At least 8 characters</span>}<button className="admin-primary-button" type="submit" disabled={busy}>{busy && <LoaderCircle size={15} className="spin" />} Update password</button></div>
     </form>
+  );
+}
+
+function AdminPasswordInput({
+  label,
+  name,
+  autoComplete,
+  minLength,
+}: {
+  label: string;
+  name: string;
+  autoComplete: string;
+  minLength?: number;
+}) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="admin-password-field">
+      <label htmlFor={`admin-${name}`}>{label}</label>
+      <span className="admin-password-control">
+        <input
+          id={`admin-${name}`}
+          name={name}
+          type={visible ? "text" : "password"}
+          autoComplete={autoComplete}
+          minLength={minLength}
+          required
+        />
+        <button
+          className="admin-password-toggle"
+          type="button"
+          onClick={() => setVisible((current) => !current)}
+          aria-label={`${visible ? "Hide" : "Show"} ${label.toLowerCase()}`}
+          title={visible ? "Hide password" : "Show password"}
+        >
+          {visible ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      </span>
+    </div>
   );
 }
 
