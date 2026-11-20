@@ -1869,11 +1869,6 @@ function AuthScreen({
                 />
                 </>
               )}
-              {mode === "login" && (
-                <button className="auth-forgot-link" type="button" onClick={() => changeMode("forgot")}>
-                  Forgot password?
-                </button>
-              )}
               <button className="button button-primary auth-submit" disabled={busy}>
                 {busy ? <LoaderCircle className="spin" size={17} /> : null}
                 {registering ? "Create account"
@@ -1882,6 +1877,11 @@ function AuthScreen({
                       : mode === "verify" ? "Verify code"
                         : "Update password"} {!busy && <ArrowRight size={17} />}
               </button>
+              {mode === "login" && (
+                <button className="auth-forgot-link" type="button" onClick={() => changeMode("forgot")}>
+                  Forgot password?
+                </button>
+              )}
             </form>
             {mode === "verify" && (
               <p className="auth-switch">
