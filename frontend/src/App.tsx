@@ -21,10 +21,11 @@ import {
   ShieldCheck,
   TrendingUp,
   Users,
+  UserRound,
   Wallet,
   X,
 } from "lucide-react";
-import { ApiError, api, clearSession, getSavedUser, saveSession } from "./api";
+import { ApiError, api, clearSession, getSavedUser, saveSession, saveUserProfile } from "./api";
 import AdminWorkspace from "./AdminWorkspace";
 import type {
   AdminProfile,
@@ -34,10 +35,11 @@ import type {
   Loan,
   LoanKind,
   LoanStatus,
+  UserProfile,
 } from "./types";
 
 type User = Pick<AuthResponse, "userId" | "email" | "name">;
-type Page = "overview" | "announcements" | LoanKind;
+type Page = "overview" | "announcements" | "profile" | LoanKind;
 type AccessState = "checking" | "admin" | "user" | "error";
 
 const emptySummary: DashboardSummary = {
@@ -225,6 +227,17 @@ function App() {
     setMarkingNotificationId(null);
     setAccessState("checking");
     setError("");
+  }
+
+  function handleProfileUpdated(profile: UserProfile) {
+    const updatedUser = {
+      userId: profile.userId,
+      email: profile.email,
+      name: profile.name,
+    };
+    setUser(updatedUser);
+    saveUserProfile(updatedUser);
+    setNotice("Your profile has been updated.");
   }
 
   const logout = useCallback((message = "") => {
@@ -506,6 +519,15 @@ function App() {
             <Bell size={18} /> Announcements
             {unreadNotifications > 0 && <span className="nav-count">{unreadNotifications}</span>}
           </button>
+          <button
+            className={`nav-item ${page === "profile" ? "nav-active" : ""}`}
+            onClick={() => {
+              setPage("profile");
+              setMobileNavOpen(false);
+            }}
+          >
+            <UserRound size={18} /> My profile
+          </button>
         </nav>
         <div className="sidebar-bottom">
           <div className={`connection ${apiOnline === false ? "connection-offline" : ""}`}>
@@ -644,6 +666,11 @@ function App() {
               onRefresh={() => void loadNotifications()}
               onMarkRead={(notification) => void markNotificationRead(notification)}
             />
+          ) : page === "profile" ? (
+            <ProfilePage
+              user={user}
+              onSaved={handleProfileUpdated}
+            />
           ) : (
             <LoanList
               kind={page}
@@ -686,6 +713,7 @@ function pageTitle(page: Page) {
   if (page === "lent") return "Money lent";
   if (page === "borrowed") return "Money borrowed";
   if (page === "announcements") return "Announcements";
+  if (page === "profile") return "My profile";
   return "Overview";
 }
 
@@ -1505,6 +1533,121 @@ function LoadingRows() {
   return <div className="loading-state"><LoaderCircle size={19} className="spin" /> Loading your loans…</div>;
 }
 
+function ProfilePage({
+  user,
+  onSaved,
+}: {
+  user: User;
+  onSaved: (profile: UserProfile) => void;
+}) {
+  const [profile, setProfile] = useState<UserProfile>({
+    userId: user.userId,
+    name: user.name,
+    email: user.email,
+    phoneNumber: "",
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    api.profile().then((nextProfile) => {
+      if (active) setProfile(nextProfile);
+    }).catch((caught: unknown) => {
+      if (active) setError(caught instanceof Error ? caught.message : "Could not load your profile.");
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    setSuccess("");
+    try {
+      const updatedProfile = await api.updateProfile({
+        name: profile.name.trim(),
+        email: profile.email.trim(),
+        phoneNumber: profile.phoneNumber.trim(),
+      });
+      setProfile(updatedProfile);
+      onSaved(updatedProfile);
+      setSuccess("Your profile changes have been saved.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not update your profile.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className="profile-page">
+      <div className="profile-page-heading">
+        <div>
+          <span className="eyebrow">ACCOUNT</span>
+          <h1>Your profile</h1>
+          <p>Keep your contact details up to date.</p>
+        </div>
+      </div>
+      <div className="panel profile-settings">
+        <div className="profile-settings-heading">
+          <span className="profile-settings-avatar">{profile.name.trim().slice(0, 1).toUpperCase() || "U"}</span>
+          <div>
+            <h2>Personal details</h2>
+            <p>These details are used to identify your account.</p>
+          </div>
+        </div>
+        {error && <div className="alert alert-error" role="alert">{error}</div>}
+        {success && <div className="profile-success" role="status">{success}</div>}
+        {loading ? (
+          <div className="loading-state"><LoaderCircle size={19} className="spin" /> Loading your profile…</div>
+        ) : (
+          <form className="profile-form" onSubmit={(event) => void submit(event)}>
+            <FormField label="Full name">
+              <input
+                autoComplete="name"
+                required
+                value={profile.name}
+                onChange={(event) => setProfile({ ...profile, name: event.target.value })}
+              />
+            </FormField>
+            <FormField label="Email address">
+              <input
+                type="email"
+                autoComplete="email"
+                required
+                value={profile.email}
+                onChange={(event) => setProfile({ ...profile, email: event.target.value })}
+              />
+            </FormField>
+            <FormField label="Phone number">
+              <input
+                type="tel"
+                autoComplete="tel"
+                required
+                value={profile.phoneNumber}
+                onChange={(event) => setProfile({ ...profile, phoneNumber: event.target.value })}
+              />
+            </FormField>
+            <div className="profile-form-actions">
+              <button className="button button-primary" disabled={saving}>
+                {saving ? <LoaderCircle className="spin" size={16} /> : null}
+                Save changes
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function AuthScreen({
   error,
   onClearError,
@@ -1522,9 +1665,21 @@ function AuthScreen({
     confirmPassword: string;
   }) => Promise<void>;
 }) {
-  const [registering, setRegistering] = useState(false);
+  const [mode, setMode] = useState<"login" | "register" | "forgot" | "verify" | "reset">("login");
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const registering = mode === "register";
+  const resetting = mode === "forgot" || mode === "verify" || mode === "reset";
+
+  function changeMode(nextMode: typeof mode) {
+    setMode(nextMode);
+    setLocalError("");
+    setFeedback("");
+    onClearError();
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1533,7 +1688,7 @@ function AuthScreen({
     setBusy(true);
     const form = new FormData(event.currentTarget);
     try {
-      if (registering) {
+      if (mode === "register") {
         const password = String(form.get("password") ?? "");
         const confirmPassword = String(form.get("confirmPassword") ?? "");
         if (password !== confirmPassword) {
@@ -1547,14 +1702,46 @@ function AuthScreen({
           password,
           confirmPassword,
         });
-      } else {
+      } else if (mode === "login") {
         await onLogin(
           String(form.get("email") ?? "").trim(),
           String(form.get("password") ?? ""),
         );
+      } else if (mode === "forgot") {
+        const email = String(form.get("email") ?? "").trim();
+        const response = await api.forgotPassword(email);
+        setResetEmail(email);
+        if (!response.message.toLowerCase().includes("sent")) {
+          setFeedback(response.message);
+        } else {
+          setFeedback("Check your email for a six-digit verification code.");
+          setMode("verify");
+        }
+      } else if (mode === "verify") {
+        const response = await api.verifyPasswordResetOtp(
+          resetEmail,
+          String(form.get("otp") ?? "").trim(),
+        );
+        setResetToken(response.resetToken);
+        setFeedback("");
+        setMode("reset");
+      } else {
+        const newPassword = String(form.get("newPassword") ?? "");
+        const confirmPassword = String(form.get("confirmPassword") ?? "");
+        if (newPassword !== confirmPassword) {
+          setLocalError("Passwords don’t match.");
+          return;
+        }
+        const response = await api.resetPassword({
+          resetToken,
+          newPassword,
+          confirmPassword,
+        });
+        setMode("login");
+        setFeedback(response.message);
       }
     } catch (caught) {
-      setLocalError(caught instanceof Error ? caught.message : "Could not sign in.");
+      setLocalError(caught instanceof Error ? caught.message : "Could not complete your request.");
     } finally {
       setBusy(false);
     }
@@ -1585,29 +1772,94 @@ function AuthScreen({
         <section className="auth-form-side">
           <div className="auth-form-wrap">
             <div className="auth-welcome">
-              <span className="auth-kicker">{registering ? "A FRESH START" : "WELCOME BACK"}</span>
-              <h2>{registering ? "Create your account" : "Sign in to your space"}</h2>
-              <p>{registering ? "Start keeping track of the things that matter." : "Your loans are right where you left them."}</p>
+              <span className="auth-kicker">
+                {registering ? "A FRESH START" : resetting ? "ACCOUNT RECOVERY" : "WELCOME BACK"}
+              </span>
+              <h2>
+                {registering ? "Create your account"
+                  : mode === "forgot" ? "Reset your password"
+                    : mode === "verify" ? "Check your email"
+                      : mode === "reset" ? "Choose a new password"
+                        : "Sign in to your space"}
+              </h2>
+              <p>
+                {registering ? "Start keeping track of the things that matter."
+                  : mode === "forgot" ? "We’ll email you a code to verify your account."
+                    : mode === "verify" ? `Enter the code sent to ${resetEmail}.`
+                      : mode === "reset" ? "Choose a strong password for your account."
+                        : "Your loans are right where you left them."}
+              </p>
             </div>
             {(localError || error) && <div className="alert alert-error auth-alert" role="alert">{localError || error}</div>}
+            {feedback && <div className="profile-success auth-feedback" role="status">{feedback}</div>}
             <form className="auth-form" onSubmit={(event) => void submit(event)}>
-              {registering && (
+              {mode === "register" && (
                 <>
                   <FormField label="Your name"><input name="name" autoComplete="name" required placeholder="e.g. Wanjiku Kamau" /></FormField>
                   <FormField label="Phone number"><input name="phoneNumber" type="tel" autoComplete="tel" required placeholder="+254 7XX XXX XXX" /></FormField>
                 </>
               )}
-              <FormField label="Email address">
-                <input name="email" type="email" autoComplete="email" required placeholder="you@example.com" />
-              </FormField>
-              <PasswordField
-                label="Password"
-                name="password"
-                autoComplete={registering ? "new-password" : "current-password"}
-                minLength={registering ? 8 : undefined}
-                placeholder={registering ? "At least 8 characters" : "Enter your password"}
-              />
-              {registering && (
+              {(mode === "login" || mode === "register" || mode === "forgot") && (
+                <FormField label="Email address">
+                  <input
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    defaultValue={mode === "forgot" ? resetEmail : undefined}
+                    placeholder="you@example.com"
+                  />
+                </FormField>
+              )}
+              {mode === "login" && (
+                <PasswordField
+                  label="Password"
+                  name="password"
+                  autoComplete="current-password"
+                  placeholder="Enter your password"
+                />
+              )}
+              {mode === "verify" && (
+                <FormField label="Six-digit verification code">
+                  <input
+                    name="otp"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    pattern="[0-9]{6}"
+                    minLength={6}
+                    maxLength={6}
+                    required
+                    placeholder="Enter the code from your email"
+                  />
+                </FormField>
+              )}
+              {mode === "reset" && (
+                <>
+                  <PasswordField
+                    label="New password"
+                    name="newPassword"
+                    autoComplete="new-password"
+                    minLength={8}
+                    placeholder="At least 8 characters"
+                  />
+                  <PasswordField
+                    label="Confirm new password"
+                    name="confirmPassword"
+                    autoComplete="new-password"
+                    minLength={8}
+                    placeholder="Enter your new password again"
+                  />
+                </>
+              )}
+              {mode === "register" && (
+                <>
+                  <PasswordField
+                    label="Password"
+                    name="password"
+                    autoComplete="new-password"
+                    minLength={8}
+                    placeholder="At least 8 characters"
+                  />
                 <PasswordField
                   label="Confirm password"
                   name="confirmPassword"
@@ -1615,20 +1867,43 @@ function AuthScreen({
                   minLength={8}
                   placeholder="Enter your password again"
                 />
+                </>
+              )}
+              {mode === "login" && (
+                <button className="auth-forgot-link" type="button" onClick={() => changeMode("forgot")}>
+                  Forgot password?
+                </button>
               )}
               <button className="button button-primary auth-submit" disabled={busy}>
                 {busy ? <LoaderCircle className="spin" size={17} /> : null}
-                {registering ? "Create account" : "Sign in"} {!busy && <ArrowRight size={17} />}
+                {registering ? "Create account"
+                  : mode === "login" ? "Sign in"
+                    : mode === "forgot" ? "Send verification code"
+                      : mode === "verify" ? "Verify code"
+                        : "Update password"} {!busy && <ArrowRight size={17} />}
               </button>
             </form>
-            <p className="auth-switch">
-              {registering ? "Already have an account?" : "New to Kumbukaa?"}{" "}
-              <button onClick={() => {
-                setRegistering(!registering);
-                setLocalError("");
-                onClearError();
-              }}>{registering ? "Sign in" : "Create an account"}</button>
-            </p>
+            {mode === "verify" && (
+              <p className="auth-switch">
+                <button onClick={() => changeMode("forgot")}>Use a different email</button>
+              </p>
+            )}
+            {mode === "reset" && (
+              <p className="auth-switch">
+                <button onClick={() => changeMode("login")}>Back to sign in</button>
+              </p>
+            )}
+            {!resetting && (
+              <p className="auth-switch">
+                {registering ? "Already have an account?" : "New to Kumbukaa?"}{" "}
+                <button onClick={() => changeMode(registering ? "login" : "register")}>
+                  {registering ? "Sign in" : "Create an account"}
+                </button>
+              </p>
+            )}
+            {mode === "forgot" && (
+              <p className="auth-switch"><button onClick={() => changeMode("login")}>Back to sign in</button></p>
+            )}
             <div className="auth-secure"><ShieldCheck size={15} /> Your account is private and secure</div>
           </div>
         </section>

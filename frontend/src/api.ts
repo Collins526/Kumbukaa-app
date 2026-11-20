@@ -17,6 +17,7 @@ import type {
   Loan,
   LoanInput,
   LoanKind,
+  UserProfile,
 } from "./types";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
@@ -121,6 +122,45 @@ export const api = {
       { method: "POST", body: JSON.stringify(input) },
       false,
     );
+  },
+
+  forgotPassword(email: string) {
+    return request<{ message: string }>(
+      "/api/auth/forgot-password",
+      { method: "POST", body: JSON.stringify({ email }) },
+      false,
+    );
+  },
+
+  verifyPasswordResetOtp(email: string, otp: string) {
+    return request<{ resetToken: string; message: string }>(
+      "/api/auth/verify-otp",
+      { method: "POST", body: JSON.stringify({ email, otp }) },
+      false,
+    );
+  },
+
+  resetPassword(input: {
+    resetToken: string;
+    newPassword: string;
+    confirmPassword: string;
+  }) {
+    return request<{ message: string }>(
+      "/api/auth/reset-password",
+      { method: "POST", body: JSON.stringify(input) },
+      false,
+    );
+  },
+
+  profile() {
+    return request<UserProfile>("/api/profile");
+  },
+
+  updateProfile(input: Pick<UserProfile, "name" | "email" | "phoneNumber">) {
+    return request<UserProfile>("/api/profile", {
+      method: "PUT",
+      body: JSON.stringify(input),
+    });
   },
 
   summary() {
@@ -284,6 +324,10 @@ export function saveSession(user: AuthResponse) {
     userKey,
     JSON.stringify({ userId: user.userId, email: user.email, name: user.name }),
   );
+}
+
+export function saveUserProfile(user: Pick<AuthResponse, "userId" | "email" | "name">) {
+  localStorage.setItem(userKey, JSON.stringify(user));
 }
 
 export function clearSession() {

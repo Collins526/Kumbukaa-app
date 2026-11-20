@@ -15,6 +15,13 @@ export interface AuthResponse {
   refreshToken: string;
 }
 
+export interface UserProfile {
+  userId: number;
+  name: string;
+  email: string;
+  phoneNumber: string;
+}
+
 export interface AdminProfile {
   id: number;
   fullName: string;
