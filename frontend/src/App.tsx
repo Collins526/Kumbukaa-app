@@ -631,15 +631,40 @@ function App() {
             <button className="icon-button notification-button" aria-label="Help" title="Kumbukaa loan tracker">
               <CircleHelp size={18} />
             </button>
-            <button
-              type="button"
-              className="avatar avatar-small topbar-profile-button"
-              aria-label="Open your profile"
-              title="My profile"
-              onClick={() => setPage("profile")}
-            >
-              {displayName.slice(0, 1).toUpperCase()}
-            </button>
+            <div className="topbar-profile-menu">
+              <button
+                type="button"
+                className="avatar avatar-small topbar-profile-button"
+                aria-label="Open your profile"
+                title="My profile"
+                onClick={() => setPage("profile")}
+              >
+                {displayName.slice(0, 1).toUpperCase()}
+              </button>
+              <div className="topbar-profile-dropdown">
+                <div className="topbar-profile-details">
+                  <span className="avatar avatar-small">{displayName.slice(0, 1).toUpperCase()}</span>
+                  <span className="topbar-profile-copy">
+                    <strong>{displayName}</strong>
+                    <small>{user.email}</small>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="topbar-profile-action"
+                  onClick={() => setPage("profile")}
+                >
+                  <UserRound size={15} /> My profile
+                </button>
+                <button
+                  type="button"
+                  className="topbar-profile-action"
+                  onClick={() => logout()}
+                >
+                  <LogOut size={15} /> Sign out
+                </button>
+              </div>
+            </div>
           </div>
         </header>
 
