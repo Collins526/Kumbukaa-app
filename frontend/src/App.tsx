@@ -631,7 +631,15 @@ function App() {
             <button className="icon-button notification-button" aria-label="Help" title="Kumbukaa loan tracker">
               <CircleHelp size={18} />
             </button>
-            <div className="avatar avatar-small">{displayName.slice(0, 1).toUpperCase()}</div>
+            <button
+              type="button"
+              className="avatar avatar-small topbar-profile-button"
+              aria-label="Open your profile"
+              title="My profile"
+              onClick={() => setPage("profile")}
+            >
+              {displayName.slice(0, 1).toUpperCase()}
+            </button>
           </div>
         </header>
 
@@ -1669,7 +1677,8 @@ function AuthScreen({
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState("");
   const [feedback, setFeedback] = useState("");
-  const [resetEmail, setResetEmail] = useState("");
+  const [resetChannel, setResetChannel] = useState<"email" | "phone">("email");
+  const [resetContact, setResetContact] = useState("");
   const [resetToken, setResetToken] = useState("");
   const registering = mode === "register";
   const resetting = mode === "forgot" || mode === "verify" || mode === "reset";
@@ -1708,18 +1717,25 @@ function AuthScreen({
           String(form.get("password") ?? ""),
         );
       } else if (mode === "forgot") {
-        const email = String(form.get("email") ?? "").trim();
-        const response = await api.forgotPassword(email);
-        setResetEmail(email);
+        const contact = String(
+          form.get(resetChannel === "email" ? "email" : "phoneNumber") ?? "",
+        ).trim();
+        const input = resetChannel === "email"
+          ? { email: contact }
+          : { phoneNumber: contact };
+        const response = await api.forgotPassword(input);
+        setResetContact(contact);
         if (!response.message.toLowerCase().includes("sent")) {
           setFeedback(response.message);
         } else {
-          setFeedback("Check your email for a six-digit verification code.");
+          setFeedback(`Check your ${resetChannel === "email" ? "email" : "phone"} for a six-digit verification code.`);
           setMode("verify");
         }
       } else if (mode === "verify") {
         const response = await api.verifyPasswordResetOtp(
-          resetEmail,
+          resetChannel === "email"
+            ? { email: resetContact }
+            : { phoneNumber: resetContact },
           String(form.get("otp") ?? "").trim(),
         );
         setResetToken(response.resetToken);
@@ -1778,14 +1794,14 @@ function AuthScreen({
               <h2>
                 {registering ? "Create your account"
                   : mode === "forgot" ? "Reset your password"
-                    : mode === "verify" ? "Check your email"
+                    : mode === "verify" ? `Check your ${resetChannel === "email" ? "email" : "phone"}`
                       : mode === "reset" ? "Choose a new password"
                         : "Sign in to your space"}
               </h2>
               <p>
                 {registering ? "Start keeping track of the things that matter."
-                  : mode === "forgot" ? "We’ll email you a code to verify your account."
-                    : mode === "verify" ? `Enter the code sent to ${resetEmail}.`
+                  : mode === "forgot" ? `Choose where to receive your verification code.`
+                    : mode === "verify" ? `Enter the code sent to ${resetContact} by ${resetChannel === "email" ? "email" : "SMS"}.`
                       : mode === "reset" ? "Choose a strong password for your account."
                         : "Your loans are right where you left them."}
               </p>
@@ -1799,17 +1815,55 @@ function AuthScreen({
                   <FormField label="Phone number"><input name="phoneNumber" type="tel" autoComplete="tel" required placeholder="+254 7XX XXX XXX" /></FormField>
                 </>
               )}
-              {(mode === "login" || mode === "register" || mode === "forgot") && (
+              {(mode === "login" || mode === "register") && (
                 <FormField label="Email address">
                   <input
                     name="email"
                     type="email"
                     autoComplete="email"
                     required
-                    defaultValue={mode === "forgot" ? resetEmail : undefined}
                     placeholder="you@example.com"
                   />
                 </FormField>
+              )}
+              {mode === "forgot" && (
+                <>
+                  <div className="reset-method-toggle" role="group" aria-label="Where to receive your code">
+                    <button
+                      type="button"
+                      className={resetChannel === "email" ? "reset-method-selected" : ""}
+                      aria-pressed={resetChannel === "email"}
+                      onClick={() => {
+                        setResetChannel("email");
+                        setResetContact("");
+                      }}
+                    >
+                      Email
+                    </button>
+                    <button
+                      type="button"
+                      className={resetChannel === "phone" ? "reset-method-selected" : ""}
+                      aria-pressed={resetChannel === "phone"}
+                      onClick={() => {
+                        setResetChannel("phone");
+                        setResetContact("");
+                      }}
+                    >
+                      Phone number
+                    </button>
+                  </div>
+                  <FormField label={resetChannel === "email" ? "Email address" : "Phone number"}>
+                    <input
+                      name={resetChannel === "email" ? "email" : "phoneNumber"}
+                      type={resetChannel === "email" ? "email" : "tel"}
+                      autoComplete={resetChannel === "email" ? "email" : "tel"}
+                      required
+                      value={resetContact}
+                      onChange={(event) => setResetContact(event.target.value)}
+                      placeholder={resetChannel === "email" ? "you@example.com" : "+254 7XX XXX XXX"}
+                    />
+                  </FormField>
+                </>
               )}
               {mode === "login" && (
                 <PasswordField
@@ -1829,7 +1883,7 @@ function AuthScreen({
                     minLength={6}
                     maxLength={6}
                     required
-                    placeholder="Enter the code from your email"
+                    placeholder={`Enter the code from your ${resetChannel === "email" ? "email" : "phone"}`}
                   />
                 </FormField>
               )}

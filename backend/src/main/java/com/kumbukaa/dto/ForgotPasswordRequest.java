@@ -11,4 +11,9 @@ import lombok.Setter;
 @AllArgsConstructor
 public class ForgotPasswordRequest {
     private String email;
+    private String phoneNumber;
+
+    public ForgotPasswordRequest(String email) {
+        this.email = email;
+    }
 }

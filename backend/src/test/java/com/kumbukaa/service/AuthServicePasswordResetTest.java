@@ -56,6 +56,9 @@ class AuthServicePasswordResetTest {
     @Mock
     private EmailService emailService;
 
+    @Mock
+    private TwilioSmsService twilioSmsService;
+
     private AuthService authService;
 
     @BeforeEach
@@ -69,7 +72,8 @@ class AuthServicePasswordResetTest {
                 jwtTokenProvider,
                 loanClaimService,
                 eventPublisher,
-                emailService
+                emailService,
+                twilioSmsService
         );
     }
 
@@ -95,6 +99,54 @@ class AuthServicePasswordResetTest {
         verify(passwordResetOtpRepository).save(otpCaptor.capture());
         assertNotNull(otpCaptor.getValue().getHashedOtp());
         assertFalse(otpCaptor.getValue().getUsed());
+    }
+
+    @Test
+    void forgotPassword_shouldCreateOtpAndSendSms_whenPhoneNumberMatchesUser() {
+        User user = User.builder()
+                .id(3L)
+                .email("user@example.com")
+                .fullName("Jane Doe")
+                .phoneNumber("254700000000")
+                .build();
+        when(userRepository.findAllByNormalizedPhoneNumber("254700000000")).thenReturn(List.of(user));
+        when(passwordResetOtpRepository.findAllByUserAndUsedFalseAndVerifiedFalseOrderByCreatedAtDesc(user))
+                .thenReturn(List.of());
+        when(passwordResetOtpRepository.save(any(PasswordResetOtp.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = authService.forgotPassword(
+                new ForgotPasswordRequest(null, "+254 700 000 000"));
+
+        assertEquals("a verification code has been sent by SMS", response.getMessage());
+        verify(twilioSmsService).sendPasswordResetOtpSms(eq("254700000000"), anyString());
+        verify(emailService, never()).sendPasswordResetOtpEmail(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void verifyOtp_shouldFindAccountByPhoneNumber() {
+        User user = User.builder()
+                .id(4L)
+                .email("user@example.com")
+                .phoneNumber("254700000000")
+                .build();
+        PasswordResetOtp otp = PasswordResetOtp.builder()
+                .user(user)
+                .hashedOtp(new BCryptPasswordEncoder().encode("123456"))
+                .expiryTime(LocalDateTime.now().plusMinutes(10))
+                .attempts(0)
+                .verified(false)
+                .used(false)
+                .build();
+        when(userRepository.findAllByNormalizedPhoneNumber("254700000000")).thenReturn(List.of(user));
+        when(passwordResetOtpRepository.findAllByUserAndUsedFalse(user)).thenReturn(List.of(otp));
+
+        var response = authService.verifyOtp(
+                new VerifyOtpRequest(null, "+254 700 000 000", "123456"));
+
+        assertEquals("OTP verified successfully.", response.getMessage());
+        assertTrue(otp.getVerified());
+        verify(passwordResetTokenRepository).save(any(PasswordResetToken.class));
     }
 
     @Test

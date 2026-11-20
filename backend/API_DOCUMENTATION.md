@@ -84,6 +84,35 @@ Login using an OTP code.
 - `200 OK`
 - Returns user details and a success message.
 
+### POST /api/auth/forgot-password
+
+Request a password-reset code using exactly one account contact:
+
+```json
+{"email":"alice@example.com"}
+```
+
+or
+
+```json
+{"phoneNumber":"+254700000000"}
+```
+
+Email codes use the configured email provider. Phone codes are sent by Twilio
+and require `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`.
+
+### POST /api/auth/verify-otp
+
+Verify a password-reset code using the same contact field used to request it,
+plus the code:
+
+```json
+{"phoneNumber":"+254700000000","otp":"123456"}
+```
+
+For email recovery, send `email` instead of `phoneNumber`. A successful
+verification returns a short-lived reset token for `POST /api/auth/reset-password`.
+
 ---
 
 ## Entities

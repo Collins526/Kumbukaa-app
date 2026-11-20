@@ -134,13 +134,32 @@ curl -X POST http://localhost:8080/api/auth/forgot-password \
   }'
 ```
 
+For phone recovery, configure the Twilio environment variables described in
+`README.md`, then send the registered phone number instead:
+
+```bash
+curl -X POST http://localhost:8080/api/auth/forgot-password \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phoneNumber": "+254700000000"
+  }'
+```
+
 Expected responses:
 
-If the account exists:
+If the email account exists:
 
 ```json
 {
   "message": "a verification code has been sent"
+}
+```
+
+If a phone account exists and Twilio is configured:
+
+```json
+{
+  "message": "a verification code has been sent by SMS"
 }
 ```
 
@@ -163,6 +182,15 @@ curl -X POST http://localhost:8080/api/auth/verify-otp \
     "email": "alice@example.com",
     "otp": "123456"
   }'
+```
+
+For phone recovery, send `phoneNumber` instead of `email`:
+
+```json
+{
+  "phoneNumber": "+254700000000",
+  "otp": "123456"
+}
 ```
 
 Expected response:

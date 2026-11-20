@@ -74,7 +74,14 @@ public class AuthController {
 
     @PostMapping("/forgot-password")
     public ResponseEntity<PasswordResetResponse> forgotPassword(@RequestBody ForgotPasswordRequest request) {
-        return ResponseEntity.ok(authService.forgotPassword(request));
+        try {
+            return ResponseEntity.ok(authService.forgotPassword(request));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new PasswordResetResponse(e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(new PasswordResetResponse(e.getMessage()));
+        }
     }
 
     @PostMapping("/verify-otp")

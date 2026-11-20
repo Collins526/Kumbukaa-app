@@ -124,18 +124,21 @@ export const api = {
     );
   },
 
-  forgotPassword(email: string) {
+  forgotPassword(contact: { email?: string; phoneNumber?: string }) {
     return request<{ message: string }>(
       "/api/auth/forgot-password",
-      { method: "POST", body: JSON.stringify({ email }) },
+      { method: "POST", body: JSON.stringify(contact) },
       false,
     );
   },
 
-  verifyPasswordResetOtp(email: string, otp: string) {
+  verifyPasswordResetOtp(
+    contact: { email?: string; phoneNumber?: string },
+    otp: string,
+  ) {
     return request<{ resetToken: string; message: string }>(
       "/api/auth/verify-otp",
-      { method: "POST", body: JSON.stringify({ email, otp }) },
+      { method: "POST", body: JSON.stringify({ ...contact, otp }) },
       false,
     );
   },

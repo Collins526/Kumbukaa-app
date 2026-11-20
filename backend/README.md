@@ -77,6 +77,7 @@ Track money the user owes to others.
 
 1. **Local development**: The default `local` profile connects to the configured Supabase PostgreSQL database using the database settings in `backend/.env` (or equivalent environment variables). Local and deployed instances therefore use the same database; changes made locally affect the shared data. Keep the Supabase credentials configured and do not set the datasource to H2.
    The `/health` endpoint reports the backend and database status. Mail is optional and is excluded from the health status by default; set `MANAGEMENT_HEALTH_MAIL_ENABLED=true` to include SMTP availability in the health check.
+   Password-reset SMS uses Twilio. Configure `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER` in `backend/.env` or the runtime environment. Set `PHONE_DEFAULT_COUNTRY_CODE` if local account numbers use a different country code (defaults to `254`). Email-based password reset remains available without Twilio.
 2. **Start the App**:
    ```bash
    mvn spring-boot:run

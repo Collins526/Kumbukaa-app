@@ -11,5 +11,11 @@ import lombok.Setter;
 @AllArgsConstructor
 public class VerifyOtpRequest {
     private String email;
+    private String phoneNumber;
     private String otp;
+
+    public VerifyOtpRequest(String email, String otp) {
+        this.email = email;
+        this.otp = otp;
+    }
 }

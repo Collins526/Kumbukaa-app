@@ -49,6 +49,7 @@ public class AuthService {
     private final LoanClaimService loanClaimService;
     private final ApplicationEventPublisher eventPublisher;
     private final EmailService emailService;
+    private final TwilioSmsService twilioSmsService;
     private final Random random;
     private final org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder passwordEncoder = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
 
@@ -59,7 +60,8 @@ public class AuthService {
                        JwtTokenProvider jwtTokenProvider,
                        LoanClaimService loanClaimService,
                        ApplicationEventPublisher eventPublisher,
-                       EmailService emailService) {
+                       EmailService emailService,
+                       TwilioSmsService twilioSmsService) {
         this.userRepository = userRepository;
         this.otpCodeRepository = otpCodeRepository;
         this.passwordResetOtpRepository = passwordResetOtpRepository;
@@ -68,6 +70,7 @@ public class AuthService {
         this.loanClaimService = loanClaimService;
         this.eventPublisher = eventPublisher;
         this.emailService = emailService;
+        this.twilioSmsService = twilioSmsService;
         this.random = new SecureRandom();
     }
 
@@ -258,9 +261,10 @@ public class AuthService {
      */
     @Transactional
     public PasswordResetResponse forgotPassword(ForgotPasswordRequest request) {
-        String email = validateEmail(request.getEmail());
-
-        Optional<User> maybeUser = userRepository.findByEmail(email);
+        if (request == null) {
+            throw new IllegalArgumentException("Email or phone number is required");
+        }
+        Optional<User> maybeUser = findPasswordResetUser(request.getEmail(), request.getPhoneNumber());
         if (maybeUser.isPresent()) {
             User user = maybeUser.get();
             List<PasswordResetOtp> activeOtps = passwordResetOtpRepository.findAllByUserAndUsedFalseAndVerifiedFalseOrderByCreatedAtDesc(user);
@@ -280,6 +284,10 @@ public class AuthService {
                     .used(false)
                     .build();
             passwordResetOtpRepository.save(passwordResetOtp);
+            if (request.getPhoneNumber() != null && !request.getPhoneNumber().isBlank()) {
+                twilioSmsService.sendPasswordResetOtpSms(user.getPhoneNumber(), otp);
+                return new PasswordResetResponse("a verification code has been sent by SMS");
+            }
             emailService.sendPasswordResetOtpEmail(user.getEmail(), user.getFullName(), otp);
             return new PasswordResetResponse("a verification code has been sent");
         }
@@ -292,11 +300,12 @@ public class AuthService {
      */
     @Transactional
     public VerifyOtpResponse verifyOtp(VerifyOtpRequest request) {
-        String email = validateEmail(request.getEmail());
+        if (request == null) {
+            throw new IllegalArgumentException("Email or phone number is required");
+        }
         String otp = validateCode(request.getOtp());
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid email or OTP"));
+        User user = findPasswordResetUser(request.getEmail(), request.getPhoneNumber())
+                .orElseThrow(() -> new IllegalArgumentException("Invalid account details or OTP"));
 
         Optional<PasswordResetOtp> latestOtp = passwordResetOtpRepository.findAllByUserAndUsedFalse(user).stream()
                 .filter(candidate -> !Boolean.TRUE.equals(candidate.getUsed()))
@@ -377,6 +386,26 @@ public class AuthService {
 
     private String generateSixDigitOtp() {
         return String.format("%06d", random.nextInt(1_000_000));
+    }
+
+    private Optional<User> findPasswordResetUser(String email, String phoneNumber) {
+        boolean hasEmail = email != null && !email.isBlank();
+        boolean hasPhoneNumber = phoneNumber != null && !phoneNumber.isBlank();
+        if (hasEmail == hasPhoneNumber) {
+            throw new IllegalArgumentException("Provide either an email address or a phone number");
+        }
+        if (hasEmail) {
+            return userRepository.findByEmail(validateEmail(email));
+        }
+
+        String normalizedPhoneNumber = PhoneNumberUtils.normalize(phoneNumber);
+        if (normalizedPhoneNumber == null) {
+            throw new IllegalArgumentException("A valid phone number is required");
+        }
+        List<User> matchingUsers = userRepository.findAllByNormalizedPhoneNumber(normalizedPhoneNumber);
+        return matchingUsers.size() == 1
+                ? Optional.of(matchingUsers.get(0))
+                : Optional.empty();
     }
 
     private String hashOtp(String otp) {

@@ -43,7 +43,8 @@ class AuthServiceAdminLoginTest {
                 mock(JwtTokenProvider.class),
                 mock(LoanClaimService.class),
                 mock(ApplicationEventPublisher.class),
-                mock(EmailService.class));
+                mock(EmailService.class),
+                mock(TwilioSmsService.class));
         LoginRequest request = new LoginRequest(email, "valid-password");
 
         IllegalArgumentException exception = assertThrows(
